@@ -18,7 +18,7 @@ def run_gamma_dist_calc(params: dict, query_type: str, k=None, a=None, b=None, l
     }[lang]
     steps = [
         intro,
-        r"PDF: $f(x) = \frac{x^{\alpha-1} e^{-x/\beta}}{\beta^\alpha \Gamma(\alpha)}, \quad x \ge 0$"
+        f"{tt('pdf_prefix', lang)}: f(x) = (x^(α-1) · e^(-x/β)) / (β^α · Γ(α)), x ≥ 0"
     ]
 
     if query_type in ["f(x)", "P(X=k)"]:
@@ -55,6 +55,7 @@ def run_gamma_dist_calc(params: dict, query_type: str, k=None, a=None, b=None, l
         "steps": steps,
         "result": res,
         "formula_latex": r"f(x) = \frac{x^{\alpha-1} e^{-x/\beta}}{\beta^\alpha \Gamma(\alpha)}, \quad x \ge 0",
+        "formula_cdf_latex": r"F(x) = \frac{\gamma(\alpha,\ x/\beta)}{\Gamma(\alpha)}, \quad x \ge 0",
         "properties": {
             "mean": mean_val,
             "variance": var_val,

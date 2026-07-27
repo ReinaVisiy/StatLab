@@ -29,7 +29,7 @@ def run_student_t_calc(params: dict, query_type: str, k=None, a=None, b=None, la
     }[lang]
     steps = [
         intro,
-        r"PDF: $f(t) = \frac{\Gamma(\frac{df+1}{2})}{\sqrt{df \pi} \Gamma(\frac{df}{2})} \left(1 + \frac{t^2}{df}\right)^{-\frac{df+1}{2}}$"
+        f"{tt('pdf_prefix', lang)}: f(t) = [Γ((df+1)/2) / (√(df·π)·Γ(df/2))] · (1 + t²/df)^(-(df+1)/2)"
     ]
 
     if query_type in ["f(x)", "P(X=k)"]:
@@ -66,7 +66,8 @@ def run_student_t_calc(params: dict, query_type: str, k=None, a=None, b=None, la
     return {
         "steps": steps,
         "result": res,
-        "formula_latex": r"f(t) \propto \left(1 + \frac{t^2}{\nu}\right)^{-\frac{\nu+1}{2}}",
+        "formula_latex": r"f(t) = \frac{\Gamma(\frac{df+1}{2})}{\sqrt{df\pi}\,\Gamma(\frac{df}{2})} \left(1+\frac{t^2}{df}\right)^{-\frac{df+1}{2}}",
+        "formula_cdf_latex": r"F(t) = I_{\frac{df}{df+t^2}}\!\left(\frac{df}{2},\ \frac{1}{2}\right)\ \text{(regularized incomplete beta)}",
         "properties": {
             "mean": mean_val,
             "variance": var_val,

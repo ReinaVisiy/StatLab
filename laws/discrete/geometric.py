@@ -17,7 +17,7 @@ def run_geometric_calc(params: dict, query_type: str, k=None, a=None, b=None, la
     }[lang]
     steps = [
         intro,
-        r"PMF: $P(X=k) = (1-p)^{k-1} p$"
+        f"{tt('pmf_prefix', lang)}: P(X=k) = (1-p)^(k-1) · p"
     ]
 
     if query_type == "P(X=k)":
@@ -71,6 +71,7 @@ def run_geometric_calc(params: dict, query_type: str, k=None, a=None, b=None, la
         "steps": steps,
         "result": res,
         "formula_latex": r"P(X=k) = (1-p)^{k-1} p, \quad k \in \{1, 2, 3, \dots\}",
+        "formula_cdf_latex": r"F(k) = 1 - (1-p)^{k}, \quad k \ge 1",
         "properties": {
             "mean": float(dist.mean()),
             "variance": float(dist.var()),

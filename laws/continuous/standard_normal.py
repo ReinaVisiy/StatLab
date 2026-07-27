@@ -21,5 +21,6 @@ def run_standard_normal_calc(params: dict, query_type: str, k=None, a=None, b=No
     std_params = {"mu": 0.0, "sigma": 1.0}
     res_dict = run_normal_calc(std_params, query_type, k=k, a=a, b=b, lang=lang)
     res_dict["formula_latex"] = r"\phi(z) = \frac{1}{\sqrt{2\pi}} e^{-\frac{z^2}{2}}"
+    res_dict["formula_cdf_latex"] = r"\Phi(z) = \frac{1}{2}\left[1 + \operatorname{erf}\!\left(\frac{z}{\sqrt{2}}\right)\right]"
     res_dict["plot_data"]["title"] = "Standard Normal Distribution N(0, 1)"
     return res_dict

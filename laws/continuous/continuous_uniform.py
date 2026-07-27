@@ -60,6 +60,7 @@ def run_continuous_uniform_calc(params: dict, query_type: str, k=None, a=None, b
         "steps": steps,
         "result": res,
         "formula_latex": r"f(x) = \frac{1}{b - a}, \quad a \le x \le b",
+        "formula_cdf_latex": r"F(x) = \frac{x - a}{b - a}, \quad a \le x \le b",
         "properties": {
             "mean": mean_val,
             "variance": var_val,

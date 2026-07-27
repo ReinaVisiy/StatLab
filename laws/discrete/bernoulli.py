@@ -82,6 +82,7 @@ def run_bernoulli_calc(params: dict, query_type: str, k=None, a=None, b=None, la
         "steps": steps,
         "result": res,
         "formula_latex": r"P(X=k) = p^k (1-p)^{1-k}, \quad k \in \{0, 1\}",
+        "formula_cdf_latex": r"F(x) = \begin{cases} 0 & x < 0 \\ 1-p & 0 \le x < 1 \\ 1 & x \ge 1 \end{cases}",
         "properties": {
             "mean": mean_val,
             "variance": var_val,

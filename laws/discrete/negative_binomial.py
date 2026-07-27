@@ -19,7 +19,7 @@ def run_negative_binomial_calc(params: dict, query_type: str, k=None, a=None, b=
     }[lang]
     steps = [
         intro,
-        r"PMF: $P(X=k) = \binom{k+r-1}{k} p^r (1-p)^k$"
+        f"{tt('pmf_prefix', lang)}: P(X=k) = C(k+r-1, k) · p^r · (1-p)^k"
     ]
 
     if query_type == "P(X=k)":
@@ -73,6 +73,7 @@ def run_negative_binomial_calc(params: dict, query_type: str, k=None, a=None, b=
         "steps": steps,
         "result": res,
         "formula_latex": r"P(X=k) = \binom{k+r-1}{k} p^r (1-p)^k, \quad k \in \{0, 1, 2, \dots\}",
+        "formula_cdf_latex": r"F(k) = \sum_{i=0}^{k} \binom{i+r-1}{i} p^r (1-p)^i = I_p(r,\ k+1)",
         "properties": {
             "mean": float(dist.mean()),
             "variance": float(dist.var()),

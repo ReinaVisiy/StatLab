@@ -19,7 +19,7 @@ def run_lognormal_calc(params: dict, query_type: str, k=None, a=None, b=None, la
     }[lang]
     steps = [
         intro,
-        r"PDF: $f(x) = \frac{1}{x \sigma \sqrt{2\pi}} e^{-\frac{(\ln x - \mu)^2}{2\sigma^2}}, \quad x > 0$"
+        f"{tt('pdf_prefix', lang)}: f(x) = (1 / (x·σ√(2π))) · e^(-(ln x - μ)² / (2σ²)), x > 0"
     ]
 
     if query_type in ["f(x)", "P(X=k)"]:
@@ -56,6 +56,7 @@ def run_lognormal_calc(params: dict, query_type: str, k=None, a=None, b=None, la
         "steps": steps,
         "result": res,
         "formula_latex": r"f(x) = \frac{1}{x \sigma \sqrt{2\pi}} e^{-\frac{(\ln x - \mu)^2}{2\sigma^2}}, \quad x > 0",
+        "formula_cdf_latex": r"F(x) = \Phi\!\left(\frac{\ln x - \mu}{\sigma}\right), \quad x > 0",
         "properties": {
             "mean": mean_val,
             "variance": var_val,

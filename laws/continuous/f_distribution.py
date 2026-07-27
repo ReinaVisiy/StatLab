@@ -24,7 +24,7 @@ def run_f_distribution_calc(params: dict, query_type: str, k=None, a=None, b=Non
     }[lang]
     steps = [
         intro,
-        r"PDF: $f(x) = \frac{\sqrt{\frac{(df1 \cdot x)^{df1} \cdot df2^{df2}}{(df1 \cdot x + df2)^{df1+df2}}}}{x \cdot B(df1/2, df2/2)}$"
+        f"{tt('pdf_prefix', lang)}: f(x) = √[((df1·x)^df1 · df2^df2) / (df1·x+df2)^(df1+df2)] / (x · B(df1/2, df2/2))"
     ]
 
     if query_type in ["f(x)", "P(X=k)"]:
@@ -60,7 +60,8 @@ def run_f_distribution_calc(params: dict, query_type: str, k=None, a=None, b=Non
     return {
         "steps": steps,
         "result": res,
-        "formula_latex": r"F = \frac{S_1^2 / \sigma_1^2}{S_2^2 / \sigma_2^2}",
+        "formula_latex": r"f(x) = \frac{\sqrt{\frac{(df_1 x)^{df_1} df_2^{df_2}}{(df_1 x + df_2)^{df_1+df_2}}}}{x\, B(df_1/2,\ df_2/2)}, \quad x \ge 0",
+        "formula_cdf_latex": r"F(x) = I_{\frac{df_1 x}{df_1 x + df_2}}\!\left(\frac{df_1}{2},\ \frac{df_2}{2}\right)",
         "properties": {
             "mean": mean_val,
             "variance": var_val,

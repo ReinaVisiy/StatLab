@@ -17,7 +17,7 @@ def run_poisson_calc(params: dict, query_type: str, k=None, a=None, b=None, lang
     }[lang]
     steps = [
         intro,
-        r"PMF: $P(X=k) = \frac{\lambda^k e^{-\lambda}}{k!}$"
+        f"{tt('pmf_prefix', lang)}: P(X=k) = (λ^k · e^(-λ)) / k!"
     ]
 
     if query_type == "P(X=k)":
@@ -70,6 +70,7 @@ def run_poisson_calc(params: dict, query_type: str, k=None, a=None, b=None, lang
         "steps": steps,
         "result": res,
         "formula_latex": r"P(X=k) = \frac{\lambda^k e^{-\lambda}}{k!}, \quad k \in \{0, 1, 2, \dots\}",
+        "formula_cdf_latex": r"F(k) = \sum_{i=0}^{k} \frac{\lambda^i e^{-\lambda}}{i!} = \frac{\Gamma(k+1,\ \lambda)}{k!}",
         "properties": {
             "mean": float(dist.mean()),
             "variance": float(dist.var()),

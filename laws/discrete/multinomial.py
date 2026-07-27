@@ -70,6 +70,7 @@ def run_multinomial_calc(params: dict, query_type: str = "P(X=k)", k=None, a=Non
         "steps": steps,
         "result": res,
         "formula_latex": r"P(X_1=x_1, \dots, X_k=x_k) = \frac{n!}{x_1! \dots x_k!} p_1^{x_1} \dots p_k^{x_k}",
+        "formula_cdf_latex": r"\text{Not defined for the multinomial (no natural ordering of the joint outcome space)}",
         "properties": {
             "mean": prop_lbl["mean"],
             "variance": prop_lbl["variance"],

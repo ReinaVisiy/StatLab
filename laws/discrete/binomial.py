@@ -18,7 +18,7 @@ def run_binomial_calc(params: dict, query_type: str, k=None, a=None, b=None, lan
     }[lang]
     steps = [
         intro,
-        r"PMF: $P(X=k) = \binom{n}{k} p^k (1-p)^{n-k}$"
+        f"{tt('pmf_prefix', lang)}: P(X=k) = C(n,k) · p^k · (1-p)^(n-k)"
     ]
 
     if query_type == "P(X=k)":
@@ -76,6 +76,7 @@ def run_binomial_calc(params: dict, query_type: str, k=None, a=None, b=None, lan
         "steps": steps,
         "result": res,
         "formula_latex": r"P(X=k) = \binom{n}{k} p^k (1-p)^{n-k}, \quad k \in \{0, 1, \dots, n\}",
+        "formula_cdf_latex": r"F(k) = \sum_{i=0}^{k} \binom{n}{i} p^i (1-p)^{n-i} = I_{1-p}(n-k,\ k+1)",
         "properties": {
             "mean": mean_val,
             "variance": var_val,

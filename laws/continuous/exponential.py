@@ -52,6 +52,7 @@ def run_exponential_calc(params: dict, query_type: str, k=None, a=None, b=None, 
         "steps": steps,
         "result": res,
         "formula_latex": r"f(x) = \lambda e^{-\lambda x}, \quad x \ge 0",
+        "formula_cdf_latex": r"F(x) = 1 - e^{-\lambda x}, \quad x \ge 0",
         "properties": {
             "mean": scale,
             "variance": scale**2,

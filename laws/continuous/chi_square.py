@@ -30,7 +30,7 @@ def run_chi_square_calc(params: dict, query_type: str, k=None, a=None, b=None, l
     }[lang]
     steps = [
         intro,
-        r"PDF: $f(x) = \frac{1}{2^{df/2} \Gamma(df/2)} x^{df/2 - 1} e^{-x/2}, \quad x \ge 0$"
+        f"{tt('pdf_prefix', lang)}: f(x) = (1 / (2^(df/2)·Γ(df/2))) · x^(df/2 - 1) · e^(-x/2), x ≥ 0"
     ]
 
     if query_type in ["f(x)", "P(X=k)"]:
@@ -63,7 +63,8 @@ def run_chi_square_calc(params: dict, query_type: str, k=None, a=None, b=None, l
     return {
         "steps": steps,
         "result": res,
-        "formula_latex": r"f(x) = \frac{1}{2^{k/2}\Gamma(k/2)} x^{k/2-1} e^{-x/2}, \quad x \ge 0",
+        "formula_latex": r"f(x) = \frac{1}{2^{df/2}\Gamma(df/2)} x^{df/2-1} e^{-x/2}, \quad x \ge 0",
+        "formula_cdf_latex": r"F(x) = \frac{\gamma(df/2,\ x/2)}{\Gamma(df/2)}, \quad x \ge 0",
         "properties": {
             "mean": df,
             "variance": 2.0 * df,

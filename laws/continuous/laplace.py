@@ -18,7 +18,7 @@ def run_laplace_calc(params: dict, query_type: str, k=None, a=None, b=None, lang
     }[lang]
     steps = [
         intro,
-        r"PDF: $f(x) = \frac{1}{2b} e^{-\frac{|x-\mu|}{b}}$"
+        f"{tt('pdf_prefix', lang)}: f(x) = (1/(2b)) · e^(-|x-μ|/b)"
     ]
 
     if query_type in ["f(x)", "P(X=k)"]:
@@ -51,6 +51,7 @@ def run_laplace_calc(params: dict, query_type: str, k=None, a=None, b=None, lang
         "steps": steps,
         "result": res,
         "formula_latex": r"f(x) = \frac{1}{2b} e^{-\frac{|x-\mu|}{b}}",
+        "formula_cdf_latex": r"F(x) = \begin{cases} \frac{1}{2}e^{(x-\mu)/b} & x < \mu \\ 1-\frac{1}{2}e^{-(x-\mu)/b} & x \ge \mu \end{cases}",
         "properties": {
             "mean": mu,
             "variance": 2.0 * b_scale**2,

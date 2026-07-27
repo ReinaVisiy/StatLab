@@ -77,6 +77,7 @@ def run_discrete_uniform_calc(params: dict, query_type: str, k=None, a=None, b=N
         "steps": steps,
         "result": res,
         "formula_latex": r"P(X=k) = \frac{1}{b - a + 1}, \quad k \in \{a, a+1, \dots, b\}",
+        "formula_cdf_latex": r"F(k) = \frac{\lfloor k \rfloor - a + 1}{b - a + 1}, \quad a \le k \le b",
         "properties": {
             "mean": mean_val,
             "variance": var_val,

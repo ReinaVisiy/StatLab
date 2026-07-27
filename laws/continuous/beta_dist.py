@@ -18,7 +18,7 @@ def run_beta_dist_calc(params: dict, query_type: str, k=None, a=None, b=None, la
     }[lang]
     steps = [
         intro,
-        r"PDF: $f(x) = \frac{x^{\alpha-1} (1-x)^{\beta-1}}{B(\alpha, \beta)}, \quad 0 \le x \le 1$"
+        f"{tt('pdf_prefix', lang)}: f(x) = (x^(α-1) · (1-x)^(β-1)) / B(α, β), 0 ≤ x ≤ 1"
     ]
 
     if query_type in ["f(x)", "P(X=k)"]:
@@ -54,6 +54,7 @@ def run_beta_dist_calc(params: dict, query_type: str, k=None, a=None, b=None, la
         "steps": steps,
         "result": res,
         "formula_latex": r"f(x) = \frac{x^{\alpha-1} (1-x)^{\beta-1}}{B(\alpha, \beta)}, \quad 0 \le x \le 1",
+        "formula_cdf_latex": r"F(x) = I_x(\alpha, \beta), \quad 0 \le x \le 1",
         "properties": {
             "mean": mean_val,
             "variance": var_val,

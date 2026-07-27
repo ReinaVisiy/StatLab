@@ -23,7 +23,7 @@ def run_normal_calc(params: dict, query_type: str, k=None, a=None, b=None, lang:
     }[lang]
     steps = [
         intro,
-        r"PDF: $f(x) = \frac{1}{\sigma \sqrt{2\pi}} e^{-\frac{1}{2}\left(\frac{x-\mu}{\sigma}\right)^2}$"
+        f"{tt('pdf_prefix', lang)}: f(x) = (1 / (σ√(2π))) · e^(-½·((x-μ)/σ)²)"
     ]
 
     if query_type in ["f(x)", "P(X=k)"]:
@@ -62,6 +62,7 @@ def run_normal_calc(params: dict, query_type: str, k=None, a=None, b=None, lang:
         "steps": steps,
         "result": res,
         "formula_latex": r"f(x) = \frac{1}{\sigma \sqrt{2\pi}} e^{-\frac{1}{2}\left(\frac{x-\mu}{\sigma}\right)^2}",
+        "formula_cdf_latex": r"F(x) = \Phi\!\left(\frac{x-\mu}{\sigma}\right) = \frac{1}{2}\left[1 + \operatorname{erf}\!\left(\frac{x-\mu}{\sigma\sqrt{2}}\right)\right]",
         "properties": {
             "mean": mu,
             "variance": sigma**2,

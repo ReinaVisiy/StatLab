@@ -26,7 +26,7 @@ def run_hypergeometric_calc(params: dict, query_type: str, k=None, a=None, b=Non
     }[lang]
     steps = [
         intro,
-        r"PMF: $P(X=k) = \frac{\binom{n}{k} \binom{M-n}{N-k}}{\binom{M}{N}}$"
+        f"{tt('pmf_prefix', lang)}: P(X=k) = [C(n,k) · C(M-n, N-k)] / C(M,N)"
     ]
 
     if query_type == "P(X=k)":
@@ -80,6 +80,7 @@ def run_hypergeometric_calc(params: dict, query_type: str, k=None, a=None, b=Non
         "steps": steps,
         "result": res,
         "formula_latex": r"P(X=k) = \frac{\binom{n}{k} \binom{M-n}{N-k}}{\binom{M}{N}}",
+        "formula_cdf_latex": r"F(k) = \sum_{i=0}^{k} \frac{\binom{n}{i} \binom{M-n}{N-i}}{\binom{M}{N}}",
         "properties": {
             "mean": float(dist.mean()),
             "variance": float(dist.var()),

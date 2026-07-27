@@ -724,14 +724,28 @@ def render_results(suite_key, item_id):
             st.write(result["conclusion"])
 
     # --- Properties (for laws) ---
+    _property_label_keys = {"mean", "variance", "std_dev", "mode", "median", "skewness", "kurtosis"}
     if result.get("properties"):
         st.markdown(f"### {t('properties_title', lang)}")
         props = result["properties"]
         cols = st.columns(min(4, len(props)))
         for i, (k, v) in enumerate(props.items()):
-            cols[i % len(cols)].metric(k.replace("_", " ").title(), f"{v:.4f}" if isinstance(v, (int, float)) else str(v))
+            label = t(k, lang) if k in _property_label_keys else k.replace("_", " ").title()
+            cols[i % len(cols)].metric(label, f"{v:.4f}" if isinstance(v, (int, float)) else str(v))
 
-    if result.get("formula_latex"):
+        if result.get("formula_latex") or result.get("formula_cdf_latex"):
+            is_discrete = suite_key == "discrete"
+            pmf_pdf_label = t("pmf_prefix", lang) if is_discrete else t("pdf_prefix", lang)
+            fcol1, fcol2 = st.columns(2)
+            with fcol1:
+                if result.get("formula_latex"):
+                    st.markdown(f"**{pmf_pdf_label}**")
+                    st.latex(result["formula_latex"])
+            with fcol2:
+                if result.get("formula_cdf_latex"):
+                    st.markdown(f"**{t('cdf_prefix', lang)}**")
+                    st.latex(result["formula_cdf_latex"])
+    elif result.get("formula_latex"):
         st.markdown(f"### {t('formula_header', lang)}")
         st.latex(result["formula_latex"])
 
@@ -786,7 +800,7 @@ def render_results(suite_key, item_id):
         create_scatter_chart(result["scatter_data"], result.get("correlation"), lang=lang, download_key=f"{item_id}_scatter")
 
     # --- Any other tabular / structured content (tables, coefficients, matrices, etc.) ---
-    known_keys = {"steps", "result", "plot_data", "properties", "formula_latex", "hypotheses",
+    known_keys = {"steps", "result", "plot_data", "properties", "formula_latex", "formula_cdf_latex", "hypotheses",
                   "assumptions", "statistic", "critical_value", "p_value", "decision", "conclusion", "error", "message",
                   "table", "lorenz_curve", "boxplot_data", "scatter_data"}
     extra_keys = [k for k in result.keys() if k not in known_keys]

@@ -18,7 +18,7 @@ def run_cauchy_calc(params: dict, query_type: str, k=None, a=None, b=None, lang:
     }[lang]
     steps = [
         intro,
-        r"PDF: $f(x) = \frac{1}{\pi \gamma \left[1 + \left(\frac{x - x_0}{\gamma}\right)^2\right]}$"
+        f"{tt('pdf_prefix', lang)}: f(x) = 1 / (π·γ·[1 + ((x-x₀)/γ)²])"
     ]
 
     if query_type in ["f(x)", "P(X=k)"]:
@@ -51,6 +51,7 @@ def run_cauchy_calc(params: dict, query_type: str, k=None, a=None, b=None, lang:
         "steps": steps,
         "result": res,
         "formula_latex": r"f(x) = \frac{1}{\pi \gamma \left[1 + \left(\frac{x-x_0}{\gamma}\right)^2\right]}",
+        "formula_cdf_latex": r"F(x) = \frac{1}{\pi}\arctan\!\left(\frac{x-x_0}{\gamma}\right) + \frac{1}{2}",
         "properties": {
             "mean": tt("undefined", lang),
             "variance": tt("undefined", lang),
