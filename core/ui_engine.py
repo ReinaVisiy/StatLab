@@ -73,8 +73,8 @@ def render_home():
             st.markdown(f"""
             <div class="stat-card">
                 <h3 style="margin-top:0;">{suite['icon']} {title}</h3>
-                <p style="color:#555; font-size:0.9rem;">{desc}</p>
-                <p style="color:#888; font-size:0.8rem;">{len(suite['items'])} tools</p>
+                <p class="card-desc" style="font-size:0.9rem;">{desc}</p>
+                <p class="card-meta" style="font-size:0.8rem;">{len(suite['items'])} tools</p>
             </div>
             """, unsafe_allow_html=True)
             if st.button(f"{t('open_prefix', lang)} {title} →", key=f"home_open_{suite_key}", use_container_width=True):
@@ -107,7 +107,7 @@ def render_suite(suite_key):
             st.markdown(f"""
             <div class="stat-card">
                 <h4 style="margin-top:0;">{_item_name(item, lang)}</h4>
-                <p style="color:#555; font-size:0.9rem;">{_item_desc(item, lang)}</p>
+                <p class="card-desc" style="font-size:0.9rem;">{_item_desc(item, lang)}</p>
             </div>
             """, unsafe_allow_html=True)
             if st.button(t("how_it_works", lang), key=f"open_{suite_key}_{item['id']}"):

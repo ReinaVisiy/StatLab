@@ -36,27 +36,46 @@ def parse_numeric_input(input_data: Union[str, List[Union[int, float]], np.ndarr
         raise ValueError(f"Unsupported input type: {type(input_data)}")
 
 def set_custom_theme():
-    """Injects custom CSS styling for StatLab cards and layout."""
+    """Injects custom CSS styling for StatLab cards and layout.
+    Uses Streamlit's reactive CSS custom properties (--background-color,
+    --secondary-background-color, --text-color, --primary-color) instead of
+    hardcoded hex values, so the layout automatically follows whichever
+    theme (System / Light / Dark) the user has selected, rather than
+    staying stuck in a light-only palette."""
     st.markdown("""
     <style>
     .stApp {
-        background-color: #F8FAFC;
+        background-color: var(--background-color);
     }
     .stat-card {
-        background-color: #FFFFFF;
-        border: 1px solid #E2E8F0;
+        background-color: var(--secondary-background-color);
+        border: 1px solid rgba(128, 128, 128, 0.25);
         border-radius: 8px;
         padding: 16px;
         margin-bottom: 12px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        color: var(--text-color);
+    }
+    .stat-card h3, .stat-card h4 {
+        color: var(--text-color) !important;
+    }
+    .stat-card p {
+        color: var(--text-color) !important;
+    }
+    .stat-card p.card-desc {
+        opacity: 0.75;
+    }
+    .stat-card p.card-meta {
+        opacity: 0.55;
     }
     .step-card {
-        background-color: #F1F5F9;
-        border-left: 4px solid #3B82F6;
+        background-color: var(--secondary-background-color);
+        border-left: 4px solid var(--primary-color);
         padding: 12px;
         border-radius: 4px;
         margin-bottom: 8px;
         font-family: monospace;
+        color: var(--text-color);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -161,13 +180,19 @@ def format_p_value(p_val: float) -> str:
     return f"{p_val:.4f}"
 
 def get_shared_plotly_theme() -> Dict[str, Any]:
+    """Transparent paper/plot background (so the chart blends into whichever
+    Streamlit theme surrounds it, light or dark) with a mid-gray font/gridline
+    palette chosen for adequate contrast against both a white and a near-black
+    page background."""
     return {
         "paper_bgcolor": "rgba(0,0,0,0)",
-        "plot_bgcolor": "white",
-        "font": {"family": "Arial, sans-serif", "color": PRIMARY},
+        "plot_bgcolor": "rgba(0,0,0,0)",
+        "font": {"family": "Arial, sans-serif", "color": "#94A3B8"},
+        "title": {"font": {"color": "#94A3B8"}},
         "margin": dict(l=40, r=40, t=50, b=40),
-        "xaxis": dict(showgrid=True, gridcolor="#E2E8F0", zeroline=True, zerolinecolor="#CBD5E1"),
-        "yaxis": dict(showgrid=True, gridcolor="#E2E8F0", zeroline=True, zerolinecolor="#CBD5E1"),
+        "xaxis": dict(showgrid=True, gridcolor="rgba(148,163,184,0.25)", zeroline=True, zerolinecolor="rgba(148,163,184,0.5)"),
+        "yaxis": dict(showgrid=True, gridcolor="rgba(148,163,184,0.25)", zeroline=True, zerolinecolor="rgba(148,163,184,0.5)"),
+        "legend": dict(font=dict(color="#94A3B8")),
     }
 
 def comparison_word(comparison: str, lang: str = "en") -> str:
