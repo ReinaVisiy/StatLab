@@ -304,8 +304,13 @@ def render_detail(suite_key, item_id):
         elif entry == "DESC_CONTINUOUS":
             st.caption(t("enter_class_bounds_caption", lang))
             df = _numeric_table(item_id, "data", ["lower", "upper", "frequency"], lang=lang)
-            classes = [(r["lower"], r["upper"]) for _, r in df.dropna().iterrows()]
-            freqs = list(pd.to_numeric(df.dropna()["frequency"], errors="coerce"))
+            df_num = df.dropna().copy()
+            df_num["lower"] = pd.to_numeric(df_num["lower"], errors="coerce")
+            df_num["upper"] = pd.to_numeric(df_num["upper"], errors="coerce")
+            df_num["frequency"] = pd.to_numeric(df_num["frequency"], errors="coerce")
+            df_num = df_num.dropna()
+            classes = [(lo, up) for lo, up in zip(df_num["lower"], df_num["upper"])]
+            freqs = list(df_num["frequency"])
             call_kwargs = dict(classes=classes, frequencies=freqs)
 
         elif entry in ("C", "C_DESC", "SLR", "POLY_REG"):
