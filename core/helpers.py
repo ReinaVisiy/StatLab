@@ -133,7 +133,7 @@ def create_distribution_plot(plot_data: Dict[str, Any], lang: str = "en", downlo
         fig = px.line(x=x, y=y, labels={"x": "x", "y": "f(x)"}, title=title)
 
     fig.update_layout(get_shared_plotly_theme())
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     return _render_png_download(fig, lang, download_key)
 
 def create_hypothesis_test_plot(plot_data: Dict[str, Any], lang: str = "en", download_key: str = None):
@@ -154,7 +154,7 @@ def create_hypothesis_test_plot(plot_data: Dict[str, Any], lang: str = "en", dow
 
     fig.update_layout(get_shared_plotly_theme())
     fig.update_layout(title="Test Statistic vs Critical Region")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
     return _render_png_download(fig, lang, download_key)
 
 def _render_png_download(fig, lang: str = "en", download_key: str = None):

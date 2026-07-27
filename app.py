@@ -31,7 +31,7 @@ with st.sidebar:
     st.session_state.lang = "en" if lang_choice == "English" else "fr"
 
     st.divider()
-    if st.button("🏠 " + t("nav_home", st.session_state.lang), use_container_width=True, key="side_home"):
+    if st.button("🏠 " + t("nav_home", st.session_state.lang), width="stretch", key="side_home"):
         st.session_state.page = "home"
         st.session_state.current_suite = None
         st.session_state.current_item = None
@@ -40,7 +40,7 @@ with st.sidebar:
     st.markdown(f"**{t('suites_section_label', st.session_state.lang)}**")
     for suite_key, suite in SUITES.items():
         title = suite["title_en"] if st.session_state.lang == "en" else suite["title_fr"]
-        if st.button(f"{suite['icon']} {title}", use_container_width=True, key=f"side_{suite_key}"):
+        if st.button(f"{suite['icon']} {title}", width="stretch", key=f"side_{suite_key}"):
             st.session_state.page = "suite"
             st.session_state.current_suite = suite_key
             st.session_state.current_item = None

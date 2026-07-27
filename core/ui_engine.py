@@ -77,7 +77,7 @@ def render_home():
                 <p class="card-meta" style="font-size:0.8rem;">{len(suite['items'])} tools</p>
             </div>
             """, unsafe_allow_html=True)
-            if st.button(f"{t('open_prefix', lang)} {title} →", key=f"home_open_{suite_key}", use_container_width=True):
+            if st.button(f"{t('open_prefix', lang)} {title} →", key=f"home_open_{suite_key}", width="stretch"):
                 _nav("suite", suite=suite_key)
 
 
@@ -151,16 +151,35 @@ def _alpha_tail_inputs(item_id, tails=True, lang="en"):
 
 
 def _numeric_table(item_id, name, columns, min_rows=3, lang="en"):
-    """Editable table via st.data_editor. Returns the resulting DataFrame."""
+    """Interactive table-building input.
+
+    Per spec: one input field (one per column here) + an Enter/Add action
+    appends a confirmed row to the table below; every cell of the resulting
+    table stays directly editable afterward, with per-row delete and a
+    clear-all action.
+
+    Row *creation* goes through a small st.form rather than relying on
+    st.data_editor's own dynamic "+ add row" affordance: that built-in
+    add-row flow has a known commit-timing quirk where the very first
+    Enter/blur on a freshly-added row doesn't make it into the returned
+    dataframe until a second edit round-trip -- exactly the "first entry
+    disappears" symptom. A form's submit-on-Enter is a single, reliable
+    script rerun, so newly entered rows always appear on the first try.
+    st.data_editor (num_rows='dynamic') is still used below to let every
+    already-added row be edited, or deleted a row at a time via its
+    native selection + delete control -- that per-row delete action is a
+    single well-defined event and isn't affected by the add-row quirk.
+    """
     key = _state_key(item_id, f"table_{name}")
     if key not in st.session_state:
         st.session_state[key] = pd.DataFrame({c: [None] * min_rows for c in columns})
+
     c1, c2 = st.columns([4, 1])
     with c1:
         csv_file = st.file_uploader(t("upload_csv_for", lang).format(name=name), type="csv", key=_state_key(item_id, f"csv_{name}"))
     with c2:
         st.write("")
-        if st.button(t("clear_all", lang), key=_state_key(item_id, f"clear_{name}"), use_container_width=True):
+        if st.button(t("clear_all", lang), key=_state_key(item_id, f"clear_{name}"), width="stretch"):
             st.session_state[key] = pd.DataFrame({c: [None] * min_rows for c in columns})
             st.rerun()
     if csv_file is not None:
@@ -168,9 +187,35 @@ def _numeric_table(item_id, name, columns, min_rows=3, lang="en"):
             st.session_state[key] = pd.read_csv(csv_file)
         except Exception as e:
             st.error(f"Could not read CSV: {e}")
-    edited = st.data_editor(st.session_state[key], num_rows="dynamic", use_container_width=True, key=_state_key(item_id, f"editor_{name}"))
-    st.session_state[key] = edited
-    return edited
+
+    # --- Add-a-row form: one field per column, Enter or the Add button
+    # reliably appends a single new row in one rerun. ---
+    form_key = _state_key(item_id, f"addrow_{name}")
+    with st.form(key=form_key, clear_on_submit=True, border=True):
+        input_cols = st.columns(len(columns) + 1)
+        new_vals = {}
+        for i, c in enumerate(columns):
+            with input_cols[i]:
+                new_vals[c] = st.text_input(c, key=f"{form_key}__val_{c}")
+        with input_cols[-1]:
+            st.markdown("<div style='height: 1.6rem'></div>", unsafe_allow_html=True)
+            submitted = st.form_submit_button(f"➕ {t('add_row_label', lang)}", width="stretch")
+
+    if submitted and any(str(v).strip() != "" for v in new_vals.values()):
+        new_row = pd.DataFrame([{c: (new_vals[c] if str(new_vals[c]).strip() != "" else None) for c in columns}])
+        st.session_state[key] = pd.concat([st.session_state[key], new_row], ignore_index=True)
+        st.rerun()
+
+    current = st.session_state[key]
+    if current.empty:
+        st.caption(t("no_rows_yet", lang))
+    else:
+        edited = st.data_editor(current, num_rows="dynamic", width="stretch",
+                                 key=_state_key(item_id, f"editor_{name}"),
+                                 hide_index=True)
+        st.session_state[key] = edited
+
+    return st.session_state[key]
 
 
 def _collect_input_tables(item_id):
@@ -516,7 +561,7 @@ def render_detail(suite_key, item_id):
     if error:
         st.error(f"Input error: {error}")
 
-    if call_kwargs is not None and st.button(f"✅ {t('calculate_button', lang)}", type="primary", use_container_width=True):
+    if call_kwargs is not None and st.button(f"✅ {t('calculate_button', lang)}", type="primary", width="stretch"):
         func = _resolve_func(item["module"], item["func"])
         if "lang" in inspect.signature(func).parameters:
             call_kwargs["lang"] = lang
@@ -557,7 +602,7 @@ def render_results(suite_key, item_id):
         with st.expander(t("data_entered_expander", lang), expanded=False):
             for name, df in input_tables.items():
                 st.caption(name)
-                st.dataframe(df, use_container_width=True)
+                st.dataframe(df, width="stretch")
                 safe_name = "".join(c if c.isalnum() else "_" for c in name)
                 download_df_button(df, key=f"csv_input_{item_id}_{safe_name}", lang=lang,
                                     filename=f"{item_id}_{safe_name}.csv")
@@ -575,7 +620,7 @@ def render_results(suite_key, item_id):
     if numeric_summary:
         with st.expander(f"📊 {t('descriptive_summary_title', lang)}", expanded=False):
             summary_df = pd.DataFrame(numeric_summary).T
-            st.dataframe(summary_df, use_container_width=True)
+            st.dataframe(summary_df, width="stretch")
             download_df_button(summary_df.reset_index(), key=f"csv_summary_{item_id}", lang=lang,
                                 filename=f"{item_id}_summary.csv")
 
@@ -666,13 +711,13 @@ def render_results(suite_key, item_id):
                 st.markdown(f"**{k.replace('_', ' ').title()}**")
                 if isinstance(v, list) and v and isinstance(v[0], dict):
                     extra_df = pd.DataFrame(v)
-                    st.dataframe(extra_df, use_container_width=True)
+                    st.dataframe(extra_df, width="stretch")
                     download_df_button(extra_df, key=f"csv_extra_{item_id}_{k}", lang=lang,
                                         filename=f"{item_id}_{k}.csv")
                 elif isinstance(v, dict):
                     st.json(v)
                 elif isinstance(v, (pd.DataFrame,)):
-                    st.dataframe(v, use_container_width=True)
+                    st.dataframe(v, width="stretch")
                     download_df_button(v, key=f"csv_extra_{item_id}_{k}", lang=lang,
                                         filename=f"{item_id}_{k}.csv")
                 else:
