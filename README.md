@@ -151,14 +151,9 @@ StatLab/
 ```
 
 ## Deployment (Streamlit Community Cloud)
+Deployed!!!
 
-1. Push this repository to GitHub (already done).
-2. Go to [share.streamlit.io](https://share.streamlit.io) and sign in.
-3. Click **New app**, select the `ReinaVisiy/StatLab` repository and
-   the `main` branch.
-4. Set the main file path to `app.py`.
-5. Click **Deploy**. Streamlit Cloud installs everything listed in
-   `requirements.txt` automatically.
+url: https://statistics-laboratory.streamlit.app/
 
 ## License
 
