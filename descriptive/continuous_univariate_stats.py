@@ -27,6 +27,7 @@ def compute_continuous_stats(classes: List[Tuple[float, float]], frequencies: Li
         raise ValueError("Sum of frequencies must be positive.")
     rel_freqs = freqs / N
     cum_freqs = np.cumsum(freqs)
+    cum_rel_freqs = cum_freqs / N
 
     # 2. Mass frequency: m_i = n_i / d_i (density = frequency / class width d_i)
     widths = np.array([upper - lower for lower, upper in adj_classes], dtype=float)
@@ -76,6 +77,7 @@ def compute_continuous_stats(classes: List[Tuple[float, float]], frequencies: Li
             "frequency": float(freqs[i]),
             "relative_frequency": float(rel_freqs[i]),
             "cumulative_frequency": float(cum_freqs[i]),
+            "cumulative_rel_freq": float(cum_rel_freqs[i]),
             "mass_frequency": float(mass_freqs[i]),
             "cumulative_mass_frequency": float(cum_mass_freqs[i])
         })

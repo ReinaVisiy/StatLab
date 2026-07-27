@@ -172,6 +172,64 @@ def _render_png_download(fig, lang: str = "en", download_key: str = None):
                             mime="image/png", key=f"png_{download_key}")
     return png_bytes
 
+def create_lorenz_chart(lorenz_data: Dict[str, Any], gini: float = None, lang: str = "en", download_key: str = None):
+    """Plots the Lorenz curve against the line of perfect equality, with the
+    area between them shaded, and the Gini index in the title if provided."""
+    if not lorenz_data or "x" not in lorenz_data or "y" not in lorenz_data:
+        return
+    x, y = lorenz_data["x"], lorenz_data["y"]
+    title = f"{t('lorenz_curve_title', lang)}" + (f" (Gini = {gini:.4f})" if gini is not None else "")
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode="lines", name=t("equality_line_label", lang),
+                              line=dict(dash="dash", color="#94A3B8")))
+    fig.add_trace(go.Scatter(x=x, y=y, mode="lines+markers", name=t("lorenz_curve_title", lang),
+                              fill="tonexty", line=dict(color=ACCENT)))
+    fig.update_layout(get_shared_plotly_theme())
+    fig.update_layout(title=title, xaxis_title=t("cum_pop_share_label", lang), yaxis_title=t("cum_value_share_label", lang))
+    st.plotly_chart(fig, width="stretch")
+    return _render_png_download(fig, lang, download_key)
+
+
+def create_boxplot_chart(boxplot_data: Dict[str, Any], lang: str = "en", download_key: str = None):
+    """Draws a box plot from a precomputed five-number summary
+    (min, q1, median, q3, max) — no need for raw expanded data."""
+    if not boxplot_data:
+        return
+    fig = go.Figure()
+    fig.add_trace(go.Box(
+        q1=[boxplot_data["q1"]], median=[boxplot_data["median"]], q3=[boxplot_data["q3"]],
+        lowerfence=[boxplot_data["min"]], upperfence=[boxplot_data["max"]],
+        name=t("boxplot_title", lang), marker_color=ACCENT,
+    ))
+    fig.update_layout(get_shared_plotly_theme())
+    fig.update_layout(title=t("boxplot_title", lang))
+    st.plotly_chart(fig, width="stretch")
+    return _render_png_download(fig, lang, download_key)
+
+
+def create_scatter_chart(scatter_data: Dict[str, Any], correlation: float = None, lang: str = "en", download_key: str = None):
+    """Plots a bivariate scatter chart, with a simple least-squares trend
+    line overlaid and the correlation coefficient in the title if provided."""
+    if not scatter_data or "x" not in scatter_data or "y" not in scatter_data:
+        return
+    x, y = np.array(scatter_data["x"]), np.array(scatter_data["y"])
+    title = t("scatter_plot_title", lang) + (f" (r = {correlation:.4f})" if correlation is not None else "")
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x, y=y, mode="markers", name=t("scatter_plot_title", lang),
+                              marker=dict(color=ACCENT, size=9)))
+    if len(x) >= 2 and np.std(x) > 0:
+        slope, intercept = np.polyfit(x, y, 1)
+        x_line = np.array([x.min(), x.max()])
+        fig.add_trace(go.Scatter(x=x_line, y=slope * x_line + intercept, mode="lines",
+                                  name=t("trend_line_label", lang), line=dict(color=REJECT, dash="dash")))
+    fig.update_layout(get_shared_plotly_theme())
+    fig.update_layout(title=title, xaxis_title="X", yaxis_title="Y")
+    st.plotly_chart(fig, width="stretch")
+    return _render_png_download(fig, lang, download_key)
+
+
 def format_p_value(p_val: float) -> str:
     if p_val is None:
         return "N/A"

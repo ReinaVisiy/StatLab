@@ -90,6 +90,14 @@ CONTINUOUS_QUERY_TYPES = ["f(x)", "P(X<=a)", "P(X<a)", "P(X>a)", "P(X>=a)", "P(a
 
 _law = lambda mod, func, entry_params: {"module": mod, "func": func, "params_spec": entry_params}
 
+NOTATION_SYMBOLS = {
+    "bernoulli": "Bernoulli", "binomial": "Bin", "poisson": "Poisson", "geometric": "Geom",
+    "negative_binomial": "NB", "hypergeometric": "Hyper", "discrete_uniform": "DUnif", "multinomial": "Multinom",
+    "normal": "N", "standard_normal": "N", "student_t": "t", "chi_square": "χ²", "f_distribution": "F",
+    "exponential": "Exp", "continuous_uniform": "Unif", "gamma_dist": "Gamma", "beta_dist": "Beta",
+    "lognormal": "LogNormal", "cauchy": "Cauchy", "laplace": "Laplace",
+}
+
 SUITES = {
     "discrete": {
         "title_en": "Discrete Laws", "title_fr": "Lois Discrètes",

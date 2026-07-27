@@ -13,9 +13,10 @@ from core.helpers import (
     PRIMARY,
     render_decision_box_html, render_step_cards, create_distribution_plot,
     create_hypothesis_test_plot, format_p_value, safe_compute, download_df_button,
+    create_lorenz_chart, create_boxplot_chart, create_scatter_chart,
 )
 from core.report_pdf import build_pdf_report
-from core.registry import SUITES, get_item
+from core.registry import SUITES, get_item, NOTATION_SYMBOLS
 from i18n.translations import t
 
 # ---------------------------------------------------------------------------
@@ -298,11 +299,31 @@ def render_detail(suite_key, item_id):
             call_kwargs = dict(params=params, query_type=query_type, k=k, a=a, b=b)
 
         elif entry in ("DESC_DISCRETE",):
+            freq_mode = st.radio(t("freq_input_type_label", lang),
+                                 [t("freq_input_effective", lang), t("freq_input_relative", lang)],
+                                 key=_state_key(item_id, "freqmode"))
+            is_relative = freq_mode == t("freq_input_relative", lang)
+            st.caption(t("freq_col_relative_caption", lang) if is_relative else t("freq_col_effective_caption", lang))
             df = _numeric_table(item_id, "data", ["value", "frequency"], lang=lang)
-            call_kwargs = dict(values=_col_to_array(df["value"]), frequencies=_col_to_array(df["frequency"]) if "frequency" in df else None)
+            values = _col_to_array(df["value"])
+            freqs = _col_to_array(df["frequency"]) if "frequency" in df else None
+            if is_relative and freqs is not None and len(freqs) > 0:
+                total_n = st.number_input(t("total_n_optional_label", lang), value=0, min_value=0, step=1,
+                                           key=_state_key(item_id, "totaln"))
+                freq_sum = float(np.sum(freqs))
+                if freq_sum > 0 and abs(freq_sum - 1.0) > 0.02:
+                    st.warning(t("freq_relative_sum_warning", lang).format(total=freq_sum))
+                if total_n > 0:
+                    freqs = freqs * total_n
+            call_kwargs = dict(values=values, frequencies=freqs)
 
         elif entry == "DESC_CONTINUOUS":
+            freq_mode = st.radio(t("freq_input_type_label", lang),
+                                 [t("freq_input_effective", lang), t("freq_input_relative", lang)],
+                                 key=_state_key(item_id, "freqmode"))
+            is_relative = freq_mode == t("freq_input_relative", lang)
             st.caption(t("enter_class_bounds_caption", lang))
+            st.caption(t("freq_col_relative_caption", lang) if is_relative else t("freq_col_effective_caption", lang))
             df = _numeric_table(item_id, "data", ["lower", "upper", "frequency"], lang=lang)
             df_num = df.dropna().copy()
             df_num["lower"] = pd.to_numeric(df_num["lower"], errors="coerce")
@@ -310,8 +331,16 @@ def render_detail(suite_key, item_id):
             df_num["frequency"] = pd.to_numeric(df_num["frequency"], errors="coerce")
             df_num = df_num.dropna()
             classes = [(lo, up) for lo, up in zip(df_num["lower"], df_num["upper"])]
-            freqs = list(df_num["frequency"])
-            call_kwargs = dict(classes=classes, frequencies=freqs)
+            freqs = np.array(df_num["frequency"], dtype=float)
+            if is_relative and len(freqs) > 0:
+                total_n = st.number_input(t("total_n_optional_label", lang), value=0, min_value=0, step=1,
+                                           key=_state_key(item_id, "totaln"))
+                freq_sum = float(np.sum(freqs))
+                if freq_sum > 0 and abs(freq_sum - 1.0) > 0.02:
+                    st.warning(t("freq_relative_sum_warning", lang).format(total=freq_sum))
+                if total_n > 0:
+                    freqs = freqs * total_n
+            call_kwargs = dict(classes=classes, frequencies=list(freqs))
 
         elif entry in ("C", "C_DESC", "SLR", "POLY_REG"):
             df = _numeric_table(item_id, "data", ["X", "Y"], lang=lang)
@@ -573,6 +602,8 @@ def render_detail(suite_key, item_id):
         with st.spinner(t("computing_spinner", lang)):
             result = safe_compute(func, **call_kwargs)
         st.session_state[f"result__{item_id}"] = result
+        if entry == "D":
+            st.session_state[f"lawparams__{item_id}"] = call_kwargs.get("params", {})
         _nav("results", suite=suite_key, item=item_id)
 
 
@@ -593,6 +624,18 @@ def render_results(suite_key, item_id):
     if result is None:
         st.info(t("no_result_yet", lang))
         return
+
+    if item["entry"] == "D":
+        law_params = st.session_state.get(f"lawparams__{item_id}", {})
+        symbol = NOTATION_SYMBOLS.get(item_id, item["name"])
+        if item_id == "standard_normal":
+            notation = "X ~ N(0, 1)"
+        elif law_params:
+            param_str = ", ".join(f"{k}={v}" for k, v in law_params.items())
+            notation = f"X ~ {symbol}({param_str})"
+        else:
+            notation = f"X ~ {symbol}"
+        st.markdown(f"**{notation}**")
 
     if result.get("error"):
         st.error(result.get("message", t("generic_error", lang)))
@@ -705,9 +748,47 @@ def render_results(suite_key, item_id):
         else:
             plot_png_bytes = create_distribution_plot(result["plot_data"], lang=lang, download_key=f"{item_id}_plot")
 
+    # --- Descriptive statistics: transposed summary table + real charts ---
+    if result.get("table"):
+        st.markdown(f"### {t('stats_summary_table_title', lang)}")
+        rows = result["table"]
+        has_midpoint = "midpoint" in rows[0]
+        col_labels = [r.get("class_label", r.get("value")) for r in rows]
+
+        def _col(key):
+            return [r[key] for r in rows]
+
+        ni, fi, Fi, fmi, Fmi = _col("frequency"), _col("relative_frequency"), _col("cumulative_rel_freq"), \
+            _col("mass_frequency"), _col("cumulative_mass_frequency")
+
+        x_label = "Cᵢ" if has_midpoint else "Xᵢ"
+        col_names = [str(i) for i in range(1, len(col_labels) + 1)] + [t("total_col_label", lang)]
+
+        data_dict = {x_label: [str(v) for v in col_labels] + ["—"]}
+        if has_midpoint:
+            data_dict["Cᵢ (midpoint)"] = [f"{v:.4f}" for v in _col("midpoint")] + ["—"]
+        data_dict["nᵢ"] = [f"{v:.4f}" for v in ni] + [f"{sum(ni):.4f}"]
+        data_dict["fᵢ"] = [f"{v:.4f}" for v in fi] + [f"{sum(fi):.4f}"]
+        data_dict["Fᵢ"] = [f"{v:.4f}" for v in Fi] + [f"{Fi[-1]:.4f}"]
+        data_dict["fmᵢ"] = [f"{v:.4f}" for v in fmi] + [f"{sum(fmi):.4f}"]
+        data_dict["Fmᵢ"] = [f"{v:.4f}" for v in Fmi] + [f"{Fmi[-1]:.4f}"]
+
+        summary_df = pd.DataFrame(data_dict, index=col_names).T
+        st.dataframe(summary_df, width="stretch")
+        download_df_button(summary_df.reset_index(), key=f"csv_stats_table_{item_id}", lang=lang,
+                            filename=f"{item_id}_summary_table.csv")
+
+    if result.get("lorenz_curve"):
+        create_lorenz_chart(result["lorenz_curve"], result.get("gini_index"), lang=lang, download_key=f"{item_id}_lorenz")
+    if result.get("boxplot_data"):
+        create_boxplot_chart(result["boxplot_data"], lang=lang, download_key=f"{item_id}_box")
+    if result.get("scatter_data"):
+        create_scatter_chart(result["scatter_data"], result.get("correlation"), lang=lang, download_key=f"{item_id}_scatter")
+
     # --- Any other tabular / structured content (tables, coefficients, matrices, etc.) ---
     known_keys = {"steps", "result", "plot_data", "properties", "formula_latex", "hypotheses",
-                  "assumptions", "statistic", "critical_value", "p_value", "decision", "conclusion", "error", "message"}
+                  "assumptions", "statistic", "critical_value", "p_value", "decision", "conclusion", "error", "message",
+                  "table", "lorenz_curve", "boxplot_data", "scatter_data"}
     extra_keys = [k for k in result.keys() if k not in known_keys]
     if extra_keys:
         with st.expander("Additional Details"):

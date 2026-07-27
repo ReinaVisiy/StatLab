@@ -76,6 +76,9 @@ def compute_discrete_stats(values: Union[List[float], np.ndarray], frequencies: 
         L_x, L_y, gini = [0, 1], [0, 1], 0.0
 
     # Summary Table DataFrame / dict
+    # mass_frequency/cumulative_mass_frequency use the unit-width convention
+    # (d_i = 1 for a single discrete value) so the table structurally matches
+    # the same fmi/Fmi rows used for continuous grouped data.
     table_data = []
     for i in range(len(vals)):
         table_data.append({
@@ -83,8 +86,13 @@ def compute_discrete_stats(values: Union[List[float], np.ndarray], frequencies: 
             "frequency": float(freqs[i]),
             "relative_frequency": float(rel_freqs[i]),
             "cumulative_frequency": float(cum_freqs[i]),
-            "cumulative_rel_freq": float(cum_rel_freqs[i])
+            "cumulative_rel_freq": float(cum_rel_freqs[i]),
+            "mass_frequency": float(freqs[i]),
+            "cumulative_mass_frequency": float(cum_freqs[i])
         })
+
+    min_val = float(np.min(vals))
+    max_val = float(np.max(vals))
 
     steps = [
         tt("discrete_stats_intro", lang).format(n_vals=len(vals), n=int(N)),
@@ -103,6 +111,8 @@ def compute_discrete_stats(values: Union[List[float], np.ndarray], frequencies: 
         "median": float(median_val),
         "q1": float(q1_val),
         "q3": float(q3_val),
+        "min": min_val,
+        "max": max_val,
         "mode": modes,
         "range": data_range,
         "variance": float(m2),
@@ -113,5 +123,7 @@ def compute_discrete_stats(values: Union[List[float], np.ndarray], frequencies: 
         "kurtosis": float(kurtosis),
         "gini_index": float(gini),
         "lorenz_curve": {"x": L_x.tolist(), "y": L_y.tolist()},
+        "boxplot_data": {"min": min_val, "q1": float(q1_val), "median": float(median_val),
+                         "q3": float(q3_val), "max": max_val},
         "table": table_data
     }
