@@ -231,6 +231,8 @@ SUITES = {
              "desc_en": "Robust test of equality of variances across groups, less sensitive to non-normality.", "desc_fr": "Test robuste de l'égalité des variances entre groupes, moins sensible à la non-normalité."},
             {"id": "brown_forsythe_test", "name": "Brown-Forsythe Test", "name_fr": "Test de Brown-Forsythe", "entry": "BN", "module": "tests.anova.brown_forsythe_test", "func": "run_brown_forsythe_test",
              "desc_en": "Median-centered variant of Levene's test, robust test of equality of variances even under skewed distributions.", "desc_fr": "Variante du test de Levene centrée sur la médiane, robuste à l'égalité des variances même sous des distributions asymétriques."},
+            {"id": "cochran_c_test", "name": "Cochran's C Test", "name_fr": "Test C de Cochran", "entry": "BN", "module": "tests.anova.cochran_c_test", "func": "run_cochran_c_test",
+             "desc_en": "Detects whether a single group's variance is an outlier relative to the others (requires equal group sizes).", "desc_fr": "Détecte si la variance d'un seul groupe est aberrante par rapport aux autres (nécessite des groupes de même effectif)."},
         ],
     },
     "correlation": {

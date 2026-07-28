@@ -12,6 +12,7 @@ from tests.anova.anova_two_way_no_replication import run_anova_two_way_no_replic
 from tests.anova.bartlett_test import run_bartlett_test
 from tests.anova.levene_test import run_levene_test
 from tests.anova.brown_forsythe_test import run_brown_forsythe_test
+from tests.anova.cochran_c_test import run_cochran_c_test
 
 
 def test_anova_one_way_matches_scipy_f_oneway():
@@ -106,3 +107,37 @@ def test_brown_forsythe_matches_levene_median_center():
     r_lev = run_levene_test(groups, center="median", alpha=0.05)
     assert r_bf["statistic"] == pytest.approx(r_lev["statistic"], rel=1e-9)
     assert r_bf["p_value"] == pytest.approx(r_lev["p_value"], rel=1e-9)
+
+
+def test_cochran_c_statistic_is_max_variance_over_sum():
+    groups = [[1, 2, 3, 4], [5, 6, 7, 20], [2, 4, 6, 9]]
+    r = run_cochran_c_test(groups, alpha=0.05)
+    variances = [np.var(g, ddof=1) for g in groups]
+    expected_stat = max(variances) / sum(variances)
+    assert r["statistic"] == pytest.approx(expected_stat, rel=1e-9)
+    assert r["sample_stats"]["max_variance_group"] == 2  # 1-indexed, group B has the biggest spread
+
+
+def test_cochran_c_two_groups_matches_two_sided_f_test():
+    # With k=2 groups, Cochran's C is algebraically equivalent to a two-sided
+    # F-test for equality of variances (alpha split across k=2 tails).
+    g1 = [10, 12, 9, 15, 11, 13, 8, 14, 10, 12]
+    g2 = [5, 25, 2, 30, 1, 28, 4, 22, 6, 27]
+    r = run_cochran_c_test([g1, g2], alpha=0.05)
+    var1, var2 = np.var(g1, ddof=1), np.var(g2, ddof=1)
+    f_stat = max(var1, var2) / min(var1, var2)
+    f_crit = sst.f.ppf(1 - 0.025, 9, 9)
+    assert r["critical_value"] == pytest.approx(f_crit / (1 + f_crit), rel=1e-9)
+    assert r["decision"] == ("reject" if f_stat > f_crit else "fail")
+
+
+def test_cochran_c_rejects_unequal_group_sizes():
+    with pytest.raises(ValueError):
+        run_cochran_c_test([[1, 2, 3], [1, 2, 3, 4]], alpha=0.05)
+
+
+def test_cochran_c_equal_variances_gives_low_statistic_and_fails_to_reject():
+    groups = [[1, 2, 3, 4, 5], [2, 3, 4, 5, 6], [0, 1, 2, 3, 4]]
+    r = run_cochran_c_test(groups, alpha=0.05)
+    assert r["decision"] == "fail"
+    assert r["p_value"] > 0.05
