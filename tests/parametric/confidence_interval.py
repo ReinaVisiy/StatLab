@@ -20,8 +20,12 @@ CI_LBL = {
         "ci": "{cl:.1f}% CI: [{lo:.4f}, {hi:.4f}]",
         "prop": "Z-Confidence Interval for Proportion (x={x}, n={n})",
         "phat_se": "p̂ = {ph:.4f}, SE = √(p̂(1-p̂)/n) = {se:.6f}",
-        "diff_means": "Welch t-Confidence Interval for Difference between Two Means (x̄₁ - x̄₂)",
+        "diff_means": "Welch t-Confidence Interval for Difference between Two Means (x̄₁ - x̄₂, unequal variances)",
         "diff_means_val": "x̄₁ - x̄₂ = {diff:.4f}, SE = {se:.6f}, df = {df:.2f}",
+        "diff_means_pooled": "Pooled t-Confidence Interval for Difference between Two Means (x̄₁ - x̄₂, equal variances assumed)",
+        "diff_means_pooled_val": "x̄₁ - x̄₂ = {diff:.4f}, s_p² = {sp2:.6f}, SE = {se:.6f}, df = {df}",
+        "diff_means_z": "Z-Confidence Interval for Difference between Two Means (x̄₁ - x̄₂, known σ₁, σ₂)",
+        "diff_means_z_val": "x̄₁ - x̄₂ = {diff:.4f}, σ₁ = {s1:.4f}, σ₂ = {s2:.4f}, SE = {se:.6f}",
         "diff_props": "Z-Confidence Interval for Difference between Two Proportions (p̂₁ - p̂₂)",
         "diff_props_val": "p̂₁ - p̂₂ = {diff:.4f}, SE = {se:.6f}",
     },
@@ -35,8 +39,12 @@ CI_LBL = {
         "ci": "IC à {cl:.1f}% : [{lo:.4f}, {hi:.4f}]",
         "prop": "Intervalle de confiance Z pour une proportion (x={x}, n={n})",
         "phat_se": "p̂ = {ph:.4f}, SE = √(p̂(1-p̂)/n) = {se:.6f}",
-        "diff_means": "Intervalle de confiance t de Welch pour la différence entre deux moyennes (x̄₁ - x̄₂)",
+        "diff_means": "Intervalle de confiance t de Welch pour la différence entre deux moyennes (x̄₁ - x̄₂, variances inégales)",
         "diff_means_val": "x̄₁ - x̄₂ = {diff:.4f}, SE = {se:.6f}, df = {df:.2f}",
+        "diff_means_pooled": "Intervalle de confiance t regroupé pour la différence entre deux moyennes (x̄₁ - x̄₂, variances égales supposées)",
+        "diff_means_pooled_val": "x̄₁ - x̄₂ = {diff:.4f}, s_p² = {sp2:.6f}, SE = {se:.6f}, df = {df}",
+        "diff_means_z": "Intervalle de confiance Z pour la différence entre deux moyennes (x̄₁ - x̄₂, σ₁, σ₂ connus)",
+        "diff_means_z_val": "x̄₁ - x̄₂ = {diff:.4f}, σ₁ = {s1:.4f}, σ₂ = {s2:.4f}, SE = {se:.6f}",
         "diff_props": "Intervalle de confiance Z pour la différence entre deux proportions (p̂₁ - p̂₂)",
         "diff_props_val": "p̂₁ - p̂₂ = {diff:.4f}, SE = {se:.6f}",
     },
@@ -48,6 +56,7 @@ def run_confidence_interval(ci_type: str = "mean_t", confidence_level: float = 0
                             x_successes: int = None, n_trials: int = None,
                             data2_input=None, sample_mean2: float = None, sample_std2: float = None,
                             sample_size2: int = None, x_successes2: int = None, n_trials2: int = None,
+                            pop_std2: float = None,
                             lang: str = "en") -> dict:
     validate_range(confidence_level, 0.50, 0.999, "confidence_level", lang=lang)
     alpha = 1.0 - confidence_level
@@ -115,26 +124,66 @@ def run_confidence_interval(ci_type: str = "mean_t", confidence_level: float = 0
         stat_val = p_hat
         crit_val = z_crit
 
-    elif ci_type == "diff_means_t":
-        m1, s1, n1 = float(sample_mean), float(sample_std), int(sample_size)
-        m2, s2, n2 = float(sample_mean2), float(sample_std2), int(sample_size2)
+    elif ci_type in ("diff_means", "diff_means_pooled", "diff_means_z"):
+        def _group_stats(d_input, m, s, n):
+            if d_input is not None:
+                arr = parse_numeric_input(d_input)
+                return int(len(arr)), float(np.mean(arr)), float(np.std(arr, ddof=1))
+            return int(n), float(m), float(s) if s is not None else None
+
+        n1, m1, s1 = _group_stats(data_input, sample_mean, sample_std, sample_size)
+        n2, m2, s2 = _group_stats(data2_input, sample_mean2, sample_std2, sample_size2)
         diff = m1 - m2
-        # Welch SE & df
-        se = np.sqrt((s1**2 / n1) + (s2**2 / n2))
-        v1, v2 = s1**2, s2**2
-        df = ((v1/n1 + v2/n2)**2) / (((v1/n1)**2/(n1-1)) + ((v2/n2)**2/(n2-1)))
-        t_crit = t_critical_value(df, alpha, tails="two")
-        me = t_crit * se
-        lower, upper = diff - me, diff + me
-        steps.extend([
-            L["diff_means"],
-            L["diff_means_val"].format(diff=diff, se=se, df=df),
-            L["me"].format(label="t_crit", me=me),
-            L["ci"].format(cl=confidence_level*100, lo=lower, hi=upper)
-        ])
+
+        if ci_type == "diff_means":
+            # Welch t-interval (unequal variances assumed)
+            se = np.sqrt((s1**2 / n1) + (s2**2 / n2))
+            v1, v2 = s1**2, s2**2
+            df = ((v1/n1 + v2/n2)**2) / (((v1/n1)**2/(n1-1)) + ((v2/n2)**2/(n2-1)))
+            t_crit = t_critical_value(df, alpha, tails="two")
+            me = t_crit * se
+            lower, upper = diff - me, diff + me
+            steps.extend([
+                L["diff_means"],
+                L["diff_means_val"].format(diff=diff, se=se, df=df),
+                L["me"].format(label="t_crit", me=me),
+                L["ci"].format(cl=confidence_level*100, lo=lower, hi=upper)
+            ])
+            crit_val = t_crit
+
+        elif ci_type == "diff_means_pooled":
+            # Pooled t-interval (equal variances assumed)
+            df = n1 + n2 - 2
+            sp2 = (((n1 - 1) * s1**2) + ((n2 - 1) * s2**2)) / df
+            se = np.sqrt(sp2 * (1.0/n1 + 1.0/n2))
+            t_crit = t_critical_value(df, alpha, tails="two")
+            me = t_crit * se
+            lower, upper = diff - me, diff + me
+            steps.extend([
+                L["diff_means_pooled"],
+                L["diff_means_pooled_val"].format(diff=diff, sp2=sp2, se=se, df=df),
+                L["me"].format(label="t_crit", me=me),
+                L["ci"].format(cl=confidence_level*100, lo=lower, hi=upper)
+            ])
+            crit_val = t_crit
+
+        else:  # diff_means_z, known population variances
+            sigma1 = pop_std if pop_std is not None else s1
+            sigma2 = pop_std2 if pop_std2 is not None else s2
+            se = np.sqrt((sigma1**2 / n1) + (sigma2**2 / n2))
+            z_crit = float(norm.ppf(1 - alpha / 2))
+            me = z_crit * se
+            lower, upper = diff - me, diff + me
+            steps.extend([
+                L["diff_means_z"],
+                L["diff_means_z_val"].format(diff=diff, s1=sigma1, s2=sigma2, se=se),
+                L["me"].format(label="Z_crit", me=me),
+                L["ci"].format(cl=confidence_level*100, lo=lower, hi=upper)
+            ])
+            crit_val = z_crit
+
         stat_name = "x̄₁ - x̄₂"
         stat_val = diff
-        crit_val = t_crit
 
     elif ci_type == "diff_proportions":
         x1, n1 = int(x_successes), int(n_trials)

@@ -486,9 +486,27 @@ def render_detail(suite_key, item_id):
                 call_kwargs["x_successes"] = st.number_input("Successes (x)", min_value=0, value=20, step=1, key=_state_key(item_id, "x"))
                 call_kwargs["n_trials"] = st.number_input("Trials (n)", min_value=1, value=50, step=1, key=_state_key(item_id, "n"))
             elif ci_type == "diff_means":
+                variance_mode = st.selectbox(
+                    "Variance assumption",
+                    ["welch", "pooled", "known"],
+                    format_func=lambda v: {
+                        "welch": "Unequal variances (Welch)",
+                        "pooled": "Equal variances (pooled)",
+                        "known": "Known population variances (Z)"
+                    }[v],
+                    key=_state_key(item_id, "varmode"))
                 df = _numeric_table(item_id, "data", ["Group 1", "Group 2"], lang=lang)
                 call_kwargs["data_input"] = _col_to_array(df["Group 1"])
                 call_kwargs["data2_input"] = _col_to_array(df["Group 2"])
+                if variance_mode == "pooled":
+                    call_kwargs["ci_type"] = "diff_means_pooled"
+                elif variance_mode == "known":
+                    call_kwargs["ci_type"] = "diff_means_z"
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        call_kwargs["pop_std"] = st.number_input("Population σ₁", value=1.0, min_value=0.0001, key=_state_key(item_id, "popstd1"))
+                    with c2:
+                        call_kwargs["pop_std2"] = st.number_input("Population σ₂", value=1.0, min_value=0.0001, key=_state_key(item_id, "popstd2"))
             elif ci_type == "diff_proportions":
                 c1, c2 = st.columns(2)
                 with c1:
