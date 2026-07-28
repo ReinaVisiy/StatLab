@@ -179,9 +179,12 @@ def _numeric_table(item_id, name, columns, min_rows=3, lang="en"):
     """Interactive table-building input.
 
     Per spec: one input field (one per column here) + an Enter/Add action
-    appends a confirmed row to the table below; every cell of the resulting
-    table stays directly editable afterward, with per-row delete and a
-    clear-all action.
+    appends a confirmed row to the table below. The table itself is
+    read-only (a plain st.dataframe) so a stray click or keystroke can't
+    silently change a value; to edit a row the person selects it from a
+    dropdown, which loads its current values into a small edit form —
+    editing is then a deliberate select-then-save action rather than an
+    always-live grid. Per-row delete and a clear-all action remain.
 
     Row *creation* goes through a small st.form rather than relying on
     st.data_editor's own dynamic "+ add row" affordance: that built-in
@@ -190,14 +193,12 @@ def _numeric_table(item_id, name, columns, min_rows=3, lang="en"):
     dataframe until a second edit round-trip -- exactly the "first entry
     disappears" symptom. A form's submit-on-Enter is a single, reliable
     script rerun, so newly entered rows always appear on the first try.
-    st.data_editor (num_rows='dynamic') is still used below to let every
-    already-added row be edited, or deleted a row at a time via its
-    native selection + delete control -- that per-row delete action is a
-    single well-defined event and isn't affected by the add-row quirk.
     """
     key = _state_key(item_id, f"table_{name}")
     if key not in st.session_state:
         st.session_state[key] = pd.DataFrame({c: [None] * min_rows for c in columns})
+
+    edit_idx_key = _state_key(item_id, f"editidx_{name}")
 
     c1, c2 = st.columns([4, 1])
     with c1:
@@ -206,10 +207,12 @@ def _numeric_table(item_id, name, columns, min_rows=3, lang="en"):
         st.write("")
         if st.button(t("clear_all", lang), key=_state_key(item_id, f"clear_{name}"), width="stretch"):
             st.session_state[key] = pd.DataFrame({c: [None] * min_rows for c in columns})
+            st.session_state.pop(edit_idx_key, None)
             st.rerun()
     if csv_file is not None:
         try:
             st.session_state[key] = pd.read_csv(csv_file)
+            st.session_state.pop(edit_idx_key, None)
         except Exception as e:
             st.error(f"Could not read CSV: {e}")
 
@@ -234,11 +237,49 @@ def _numeric_table(item_id, name, columns, min_rows=3, lang="en"):
     current = st.session_state[key]
     if current.empty:
         st.caption(t("no_rows_yet", lang))
-    else:
-        edited = st.data_editor(current, num_rows="dynamic", width="stretch",
-                                 key=_state_key(item_id, f"editor_{name}"),
-                                 hide_index=True)
-        st.session_state[key] = edited
+        return current
+
+    # --- Read-only display: cells can't be changed by clicking/typing here. ---
+    st.dataframe(current, width="stretch", hide_index=True)
+
+    # --- Select-to-edit: pick a row, its values load into the form below. ---
+    row_options = list(current.index)
+    if st.session_state.get(edit_idx_key) not in row_options:
+        st.session_state[edit_idx_key] = row_options[0]
+
+    def _row_label(i):
+        vals = current.loc[i]
+        preview = ", ".join(str(vals[c]) if pd.notna(vals[c]) else "—" for c in columns)
+        return f"{t('row_label', lang)} {i + 1}: {preview}"
+
+    sel_col, del_col = st.columns([3, 1])
+    with sel_col:
+        selected = st.selectbox(t("select_row_to_edit", lang), options=row_options,
+                                 format_func=_row_label, key=edit_idx_key)
+    with del_col:
+        st.write("")
+        if st.button(f"🗑️ {t('delete_row_label', lang)}", key=_state_key(item_id, f"delrow_{name}"), width="stretch"):
+            st.session_state[key] = current.drop(index=selected).reset_index(drop=True)
+            st.session_state.pop(edit_idx_key, None)
+            st.rerun()
+
+    edit_form_key = _state_key(item_id, f"editrow_{name}")
+    with st.form(key=edit_form_key, border=True):
+        edit_cols = st.columns(len(columns) + 1)
+        edit_vals = {}
+        for i, c in enumerate(columns):
+            with edit_cols[i]:
+                cur_val = current.loc[selected, c]
+                default_str = "" if pd.isna(cur_val) else str(cur_val)
+                edit_vals[c] = st.text_input(c, value=default_str, key=f"{edit_form_key}__{c}__{selected}")
+        with edit_cols[-1]:
+            st.markdown("<div style='height: 1.6rem'></div>", unsafe_allow_html=True)
+            saved = st.form_submit_button(f"💾 {t('save_row_label', lang)}", width="stretch")
+
+    if saved:
+        for c in columns:
+            st.session_state[key].loc[selected, c] = edit_vals[c] if str(edit_vals[c]).strip() != "" else None
+        st.rerun()
 
     return st.session_state[key]
 
