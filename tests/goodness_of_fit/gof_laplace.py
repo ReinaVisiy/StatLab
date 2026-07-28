@@ -15,15 +15,20 @@ from tests.goodness_of_fit._gof_shared import (
 from i18n.translations import t as tt
 
 
-def run_gof_laplace(data_input, class_edges, alpha: float = 0.05, lang: str = "en") -> dict:
+def run_gof_laplace(data_input, class_edges, mu_given: float = None, b_given: float = None,
+                     alpha: float = 0.05, lang: str = "en") -> dict:
     """
-    Tests whether continuous data follow a Laplace(mu, b) distribution. mu
-    (location) is estimated by the MLE, the sample median; b (scale) is
-    estimated by its MLE, the mean absolute deviation from the median.
+    Tests whether continuous data follow a Laplace(mu, b) distribution. By
+    default mu (location) is estimated by its MLE, the sample median, and
+    b (scale) is estimated by its MLE, the mean absolute deviation from the
+    median. Pass mu_given/b_given to test against user-specified parameters
+    instead.
 
     Args:
         data_input: raw continuous data
         class_edges: interior class boundary values
+        mu_given: optional fixed location parameter
+        b_given: optional fixed scale parameter
         alpha: significance level
 
     Returns: dict matching the project's hypothesis-test result contract.
@@ -36,19 +41,28 @@ def run_gof_laplace(data_input, class_edges, alpha: float = 0.05, lang: str = "e
     if len(class_edges) < 1:
         raise ValueError("At least one interior class edge is required.")
 
-    mu_hat = float(np.median(data))
-    b_hat = float(np.mean(np.abs(data - mu_hat)))
+    if mu_given is not None and b_given is not None:
+        mu_hat, b_hat = float(mu_given), float(b_given)
+        p_estimated = 0
+        fit_steps = [
+            {"en": f"\u03bc = {mu_hat:.4f}, b = {b_hat:.4f} are given (not estimated from data)",
+             "fr": f"\u03bc = {mu_hat:.4f}, b = {b_hat:.4f} sont donn\u00e9s (non estim\u00e9s)"}[lang],
+        ]
+    else:
+        mu_hat = float(np.median(data))
+        b_hat = float(np.mean(np.abs(data - mu_hat)))
+        p_estimated = 2
+        fit_steps = [
+            {"en": f"MLE for location: \u03bc\u0302 = median(data) = {mu_hat:.4f}",
+             "fr": f"EMV pour la position : \u03bc\u0302 = m\u00e9diane(donn\u00e9es) = {mu_hat:.4f}"}[lang],
+            {"en": f"MLE for scale: b\u0302 = mean(|x_i - \u03bc\u0302|) = {b_hat:.4f}",
+             "fr": f"EMV pour l'\u00e9chelle : b\u0302 = moyenne(|x_i - \u03bc\u0302|) = {b_hat:.4f}"}[lang],
+        ]
     if b_hat <= 0:
-        raise ValueError("Estimated scale (mean absolute deviation from the median) must be strictly positive.")
+        raise ValueError("Scale b (given or estimated) must be strictly positive.")
 
     dist_name = f"Laplace(\u03bc={mu_hat:.4f}, b={b_hat:.4f})"
-    fit_steps = [
-        {"en": f"MLE for location: \u03bc\u0302 = median(data) = {mu_hat:.4f}",
-         "fr": f"EMV pour la position : \u03bc\u0302 = m\u00e9diane(donn\u00e9es) = {mu_hat:.4f}"}[lang],
-        {"en": f"MLE for scale: b\u0302 = mean(|x_i - \u03bc\u0302|) = {b_hat:.4f}",
-         "fr": f"EMV pour l'\u00e9chelle : b\u0302 = moyenne(|x_i - \u03bc\u0302|) = {b_hat:.4f}"}[lang],
-        tt("gof_fitted_distribution", lang).format(dist=dist_name),
-    ]
+    fit_steps.append(tt("gof_fitted_distribution", lang).format(dist=dist_name))
 
     params = {"mu": mu_hat, "b_scale": b_hat}
     labels, expected_probs = build_continuous_categories(class_edges, run_laplace_calc, params)
@@ -60,7 +74,7 @@ def run_gof_laplace(data_input, class_edges, alpha: float = 0.05, lang: str = "e
         observed=observed,
         expected_probs=expected_probs,
         N=N,
-        p_estimated_params=2,
+        p_estimated_params=p_estimated,
         alpha=alpha,
         fit_steps=fit_steps,
         formula_latex=r"f(x) = \frac{1}{2b} e^{-\frac{|x-\mu|}{b}}",

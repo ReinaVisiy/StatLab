@@ -15,6 +15,7 @@ from core.helpers import (
     create_hypothesis_test_plot, format_p_value, safe_compute, download_df_button,
     create_lorenz_chart, create_boxplot_chart, create_scatter_chart,
     create_regression_plot, create_residuals_plot, create_fitted_vs_actual_plot,
+    expand_frequency_data,
 )
 from core.report_pdf import build_pdf_report
 from core.registry import SUITES, get_item, NOTATION_SYMBOLS
@@ -668,11 +669,26 @@ def render_detail(suite_key, item_id):
             call_kwargs = dict(df_data=clean, y_col="Y", x_cols=x_cols, alpha=alpha)
 
         elif entry in ("GOF_DISCRETE", "GOF_CONTINUOUS"):
-            df = _numeric_table(item_id, "data", ["value"], lang=lang)
-            data_arr = _col_to_array(df["value"])
+            st.caption(t("freq_col_effective_caption", lang))
+            df = _numeric_table(item_id, "data", ["value", "frequency"], lang=lang)
+            values = _col_to_array(df["value"])
+            freqs = _col_to_array(df["frequency"]) if "frequency" in df else None
+            data_arr = expand_frequency_data(values, freqs if freqs is not None and len(freqs) == len(values) else None)
             extra = {}
             for spec in item.get("law_params", []):
                 extra[spec["name"]] = _param_input(item_id, spec)
+
+            estimable = item.get("estimable_params", [])
+            if estimable:
+                mode = st.radio(t("gof_param_mode_label", lang),
+                                 [t("gof_param_mode_estimate", lang), t("gof_param_mode_given", lang)],
+                                 key=_state_key(item_id, "parammode"))
+                if mode == t("gof_param_mode_given", lang):
+                    cols = st.columns(len(estimable))
+                    for c, spec in zip(cols, estimable):
+                        with c:
+                            extra[f"{spec['name']}_given"] = _param_input(item_id, spec)
+
             alpha, _ = _alpha_tail_inputs(item_id, tails=False, lang=lang)
             call_kwargs = dict(data_input=data_arr, alpha=alpha, **extra)
             if entry == "GOF_CONTINUOUS":

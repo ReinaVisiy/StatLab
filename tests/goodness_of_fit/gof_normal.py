@@ -15,16 +15,22 @@ from tests.goodness_of_fit._gof_shared import (
 from i18n.translations import t as tt
 
 
-def run_gof_normal(data_input, class_edges, alpha: float = 0.05, lang: str = "en") -> dict:
+def run_gof_normal(data_input, class_edges, mu_given: float = None, sigma_given: float = None,
+                    alpha: float = 0.05, lang: str = "en") -> dict:
     """
-    Tests whether continuous data follow a Normal(mu, sigma^2) distribution,
-    with mu and sigma estimated from the sample mean and sample standard
-    deviation (ddof=1). class_edges are interior class boundaries; the
-    first and last classes are automatically extended to -infinity/+infinity.
+    Tests whether continuous data follow a Normal(mu, sigma^2) distribution.
+    By default mu and sigma are estimated from the sample mean and sample
+    standard deviation (ddof=1); pass mu_given and/or sigma_given to test
+    against user-specified parameters instead (each supplied parameter is
+    not estimated, so it does not consume a degree of freedom). class_edges
+    are interior class boundaries; the first and last classes are
+    automatically extended to -infinity/+infinity.
 
     Args:
         data_input: raw continuous data
         class_edges: interior class boundary values (list of numbers)
+        mu_given: optional fixed mean
+        sigma_given: optional fixed standard deviation
         alpha: significance level
 
     Returns: dict matching the project's hypothesis-test result contract.
@@ -37,19 +43,31 @@ def run_gof_normal(data_input, class_edges, alpha: float = 0.05, lang: str = "en
     if len(class_edges) < 1:
         raise ValueError("At least one interior class edge is required.")
 
-    mu_hat = float(np.mean(data))
-    sigma_hat = float(np.std(data, ddof=1))
+    fit_steps = []
+    p_estimated = 0
+    if mu_given is not None:
+        mu_hat = float(mu_given)
+        fit_steps.append({"en": f"\u03bc = {mu_hat:.4f} is given (not estimated from data)",
+                           "fr": f"\u03bc = {mu_hat:.4f} est donn\u00e9 (non estim\u00e9)"}[lang])
+    else:
+        mu_hat = float(np.mean(data))
+        p_estimated += 1
+        fit_steps.append({"en": f"Estimate \u03bc by the sample mean: \u03bc\u0302 = {mu_hat:.4f}",
+                           "fr": f"Estimation de \u03bc par la moyenne \u00e9chantillonnale : \u03bc\u0302 = {mu_hat:.4f}"}[lang])
+    if sigma_given is not None:
+        sigma_hat = float(sigma_given)
+        fit_steps.append({"en": f"\u03c3 = {sigma_hat:.4f} is given (not estimated from data)",
+                           "fr": f"\u03c3 = {sigma_hat:.4f} est donn\u00e9 (non estim\u00e9)"}[lang])
+    else:
+        sigma_hat = float(np.std(data, ddof=1))
+        p_estimated += 1
+        fit_steps.append({"en": f"Estimate \u03c3 by the sample standard deviation (ddof=1): \u03c3\u0302 = {sigma_hat:.4f}",
+                           "fr": f"Estimation de \u03c3 par l'\u00e9cart-type \u00e9chantillonnal (ddof=1) : \u03c3\u0302 = {sigma_hat:.4f}"}[lang])
     if sigma_hat <= 0:
-        raise ValueError("Estimated sigma (sample std dev) must be strictly positive.")
+        raise ValueError("Sigma (given or estimated) must be strictly positive.")
 
     dist_name = f"Normal(\u03bc={mu_hat:.4f}, \u03c3={sigma_hat:.4f})"
-    fit_steps = [
-        {"en": f"Estimate \u03bc by the sample mean: \u03bc\u0302 = {mu_hat:.4f}",
-         "fr": f"Estimation de \u03bc par la moyenne \u00e9chantillonnale : \u03bc\u0302 = {mu_hat:.4f}"}[lang],
-        {"en": f"Estimate \u03c3 by the sample standard deviation (ddof=1): \u03c3\u0302 = {sigma_hat:.4f}",
-         "fr": f"Estimation de \u03c3 par l'\u00e9cart-type \u00e9chantillonnal (ddof=1) : \u03c3\u0302 = {sigma_hat:.4f}"}[lang],
-        tt("gof_fitted_distribution", lang).format(dist=dist_name),
-    ]
+    fit_steps.append(tt("gof_fitted_distribution", lang).format(dist=dist_name))
 
     params = {"mu": mu_hat, "sigma": sigma_hat}
     labels, expected_probs = build_continuous_categories(class_edges, run_normal_calc, params)
@@ -61,7 +79,7 @@ def run_gof_normal(data_input, class_edges, alpha: float = 0.05, lang: str = "en
         observed=observed,
         expected_probs=expected_probs,
         N=N,
-        p_estimated_params=2,
+        p_estimated_params=p_estimated,
         alpha=alpha,
         fit_steps=fit_steps,
         formula_latex=r"f(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{-\frac{1}{2}\left(\frac{x-\mu}{\sigma}\right)^2}",

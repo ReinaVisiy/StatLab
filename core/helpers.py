@@ -35,6 +35,30 @@ def parse_numeric_input(input_data: Union[str, List[Union[int, float]], np.ndarr
     else:
         raise ValueError(f"Unsupported input type: {type(input_data)}")
 
+def expand_frequency_data(values, freqs=None) -> np.ndarray:
+    """
+    Expands a (value, frequency) pair of parallel sequences into a flat raw
+    observation array by repeating each value freq times. If freqs is None,
+    or a given entry's frequency is missing/blank, that value is treated as
+    a single raw observation (frequency = 1) -- this keeps plain one-row-
+    per-observation entry working unchanged.
+
+    Frequencies must be non-negative integers (a 0 excludes that value).
+    """
+    values = parse_numeric_input(values) if not isinstance(values, np.ndarray) else values
+    if freqs is None:
+        return values
+    freqs = np.asarray(freqs, dtype=float)
+    if len(freqs) != len(values):
+        raise ValueError("Values and frequencies must have the same length.")
+    freqs = np.where(np.isnan(freqs), 1.0, freqs)
+    if np.any(freqs < 0) or np.any(freqs != np.floor(freqs)):
+        raise ValueError("Frequencies must be non-negative integers.")
+    out = np.repeat(values, freqs.astype(int))
+    if len(out) == 0:
+        raise ValueError("Total frequency is zero; no observations to test.")
+    return out
+
 def set_custom_theme():
     """Injects custom CSS styling for StatLab cards and layout.
     Uses Streamlit's reactive CSS custom properties (--background-color,
