@@ -41,6 +41,8 @@ def run_anova_two_way_replication(df_data: pd.DataFrame,
     cell_means = df_data.groupby([factor_a_col, factor_b_col])[response_col].mean().unstack()
     row_means = df_data.groupby(factor_a_col)[response_col].mean()
     col_means = df_data.groupby(factor_b_col)[response_col].mean()
+    row_means_labeled = {str(k): float(v) for k, v in row_means.items()}
+    col_means_labeled = {str(k): float(v) for k, v in col_means.items()}
 
     # Sums of Squares
     ss_a = b * n_rep * sum((row_means - grand_mean)**2)
@@ -113,7 +115,8 @@ def run_anova_two_way_replication(df_data: pd.DataFrame,
     ]
 
     return {
-        "sample_stats": {"a": a, "b": b, "n_rep": n_rep, "N": N, "grand_mean": grand_mean},
+        "sample_stats": {"a": a, "b": b, "n_rep": n_rep, "N": N, "grand_mean": grand_mean,
+                         "row_means": row_means_labeled, "col_means": col_means_labeled},
         "anova_table": anova_table,
         "interaction_result": {
             "label": f"{tt('interaction_label', lang)} ({factor_a_col} x {factor_b_col})",

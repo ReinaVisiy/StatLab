@@ -30,6 +30,11 @@ def run_anova_two_way_no_replication(data_matrix: np.ndarray,
     row_means = np.mean(matrix, axis=1)
     col_means = np.mean(matrix, axis=0)
 
+    row_lbls = row_labels if row_labels is not None and len(row_labels) == a else [f"A{i+1}" for i in range(a)]
+    col_lbls = col_labels if col_labels is not None and len(col_labels) == b else [f"B{j+1}" for j in range(b)]
+    row_means_labeled = {lbl: float(m) for lbl, m in zip(row_lbls, row_means)}
+    col_means_labeled = {lbl: float(m) for lbl, m in zip(col_lbls, col_means)}
+
     # Sums of Squares
     ss_rows = b * sum((r_m - grand_mean)**2 for r_m in row_means)  # SC_A
     ss_cols = a * sum((c_m - grand_mean)**2 for c_m in col_means)  # SC_B
@@ -75,7 +80,8 @@ def run_anova_two_way_no_replication(data_matrix: np.ndarray,
     ]
 
     return {
-        "sample_stats": {"a_rows": a, "b_cols": b, "N": N, "grand_mean": grand_mean},
+        "sample_stats": {"a_rows": a, "b_cols": b, "N": N, "grand_mean": grand_mean,
+                         "row_means": row_means_labeled, "col_means": col_means_labeled},
         "anova_table": anova_table,
         "factor_a_result": {
             "label": tt("factor_a_rows_label", lang),
