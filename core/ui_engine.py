@@ -180,7 +180,7 @@ def _alpha_tail_inputs(item_id, tails=True, lang="en"):
     return alpha, alternative
 
 
-def _numeric_table(item_id, name, columns, min_rows=3, lang="en"):
+def _numeric_table(item_id, name, columns, min_rows=0, lang="en"):
     """Interactive table-building input.
 
     Per spec: one input field (one per column here) + an Enter/Add action
@@ -198,6 +198,16 @@ def _numeric_table(item_id, name, columns, min_rows=3, lang="en"):
     dataframe until a second edit round-trip -- exactly the "first entry
     disappears" symptom. A form's submit-on-Enter is a single, reliable
     script rerun, so newly entered rows always appear on the first try.
+
+    min_rows defaults to 0: for the ordinary "keep adding confirmed rows"
+    use case, pre-seeding blank rows served no purpose once row creation
+    went through the add-row form above -- new rows were always appended
+    *after* the leftover blanks, so the table looked like it was "filling
+    from the bottom" while empty rows sat untouched at the top. Only pass
+    a nonzero min_rows for genuinely positional grids, where row i has a
+    fixed meaning (e.g. "Factor A level i") set by a row-count input
+    elsewhere on the page and read back with df.head(n_rows) -- there,
+    the pre-sized rows are the whole point, not accumulation filler.
     """
     key = _state_key(item_id, f"table_{name}")
     if key not in st.session_state:
@@ -645,45 +655,31 @@ def render_detail(suite_key, item_id):
 
         elif entry == "TWOWAY_REP":
             alpha, _ = _alpha_tail_inputs(item_id, tails=False, lang=lang)
-            entry_mode = st.radio(
-                t("entry_mode_label", lang),
-                ["long", "grid"],
-                format_func=lambda v: t(f"entry_mode_{v}", lang),
-                horizontal=True,
-                key=_state_key(item_id, "twrep_mode"),
-            )
-            if entry_mode == "long":
-                st.caption(t("long_format_caption", lang))
-                df = _numeric_table(item_id, "data", ["FactorA", "FactorB", "Response"], min_rows=6, lang=lang)
-                clean = df.dropna()
-                clean = clean.assign(Response=pd.to_numeric(clean["Response"], errors="coerce")).dropna()
-                call_kwargs = dict(df_data=clean, factor_a_col="FactorA", factor_b_col="FactorB", response_col="Response", alpha=alpha)
-            else:
-                n_rows = st.number_input("Number of Factor A levels (rows)", min_value=2, max_value=10, value=2, step=1, key=_state_key(item_id, "twrep_nrows"))
-                n_cols = st.number_input("Number of Factor B levels (columns)", min_value=2, max_value=10, value=2, step=1, key=_state_key(item_id, "twrep_ncols"))
-                n_rep = st.number_input("Replicates per cell", min_value=2, max_value=20, value=2, step=1, key=_state_key(item_id, "twrep_nrep"))
-                st.caption(t("grid_comma_caption", lang).format(n=int(n_rep)))
-                grid_cols = [f"B{i+1}" for i in range(int(n_cols))]
-                grid_df = _numeric_table(item_id, "grid", grid_cols, min_rows=int(n_rows), lang=lang)
-                rows_used = grid_df.head(int(n_rows))
-                long_rows = []
-                for i in range(min(int(n_rows), len(rows_used))):
-                    row_label = f"A{i+1}"
-                    for c in grid_cols:
-                        cell_val = rows_used.iloc[i][c]
-                        if cell_val is None or str(cell_val).strip() == "":
+            n_rows = st.number_input("Number of Factor A levels (rows)", min_value=2, max_value=10, value=2, step=1, key=_state_key(item_id, "twrep_nrows"))
+            n_cols = st.number_input("Number of Factor B levels (columns)", min_value=2, max_value=10, value=2, step=1, key=_state_key(item_id, "twrep_ncols"))
+            n_rep = st.number_input("Replicates per cell", min_value=2, max_value=20, value=2, step=1, key=_state_key(item_id, "twrep_nrep"))
+            st.caption(t("grid_comma_caption", lang).format(n=int(n_rep)))
+            grid_cols = [f"B{i+1}" for i in range(int(n_cols))]
+            grid_df = _numeric_table(item_id, "grid", grid_cols, min_rows=int(n_rows), lang=lang)
+            rows_used = grid_df.head(int(n_rows))
+            long_rows = []
+            for i in range(min(int(n_rows), len(rows_used))):
+                row_label = f"A{i+1}"
+                for c in grid_cols:
+                    cell_val = rows_used.iloc[i][c]
+                    if cell_val is None or str(cell_val).strip() == "":
+                        continue
+                    for piece in str(cell_val).split(","):
+                        piece = piece.strip()
+                        if piece == "":
                             continue
-                        for piece in str(cell_val).split(","):
-                            piece = piece.strip()
-                            if piece == "":
-                                continue
-                            try:
-                                v = float(piece)
-                            except ValueError:
-                                continue
-                            long_rows.append({"FactorA": row_label, "FactorB": c, "Response": v})
-                clean = pd.DataFrame(long_rows, columns=["FactorA", "FactorB", "Response"])
-                call_kwargs = dict(df_data=clean, factor_a_col="FactorA", factor_b_col="FactorB", response_col="Response", alpha=alpha) if not clean.empty else None
+                        try:
+                            v = float(piece)
+                        except ValueError:
+                            continue
+                        long_rows.append({"FactorA": row_label, "FactorB": c, "Response": v})
+            clean = pd.DataFrame(long_rows, columns=["FactorA", "FactorB", "Response"])
+            call_kwargs = dict(df_data=clean, factor_a_col="FactorA", factor_b_col="FactorB", response_col="Response", alpha=alpha) if not clean.empty else None
 
         elif entry == "MATRIX_VARS":
             n_vars = st.number_input("Number of variables", min_value=2, max_value=8, value=3, step=1, key=_state_key(item_id, "nvars"))
@@ -726,12 +722,12 @@ def render_detail(suite_key, item_id):
             call_kwargs = dict(data_input=data_arr, alpha=alpha, **extra)
             if entry == "GOF_CONTINUOUS":
                 st.caption(t("enter_class_edges_caption", lang))
-                edges_df = _numeric_table(item_id, "edges", ["edge"], min_rows=5, lang=lang)
+                edges_df = _numeric_table(item_id, "edges", ["edge"], lang=lang)
                 edges = sorted(_col_to_array(edges_df["edge"]).tolist())
                 call_kwargs["class_edges"] = edges
 
         elif entry == "GOF_MULTINOMIAL":
-            df = _numeric_table(item_id, "data", ["category", "observed_count", "hypothesized_prob"], min_rows=3, lang=lang)
+            df = _numeric_table(item_id, "data", ["category", "observed_count", "hypothesized_prob"], lang=lang)
             clean = df.dropna()
             call_kwargs = dict(
                 observed_counts=pd.to_numeric(clean["observed_count"], errors="coerce").tolist(),
