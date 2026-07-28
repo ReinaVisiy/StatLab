@@ -569,12 +569,46 @@ def render_detail(suite_key, item_id):
             call_kwargs = dict(data_matrix=mat, row_labels=[f"A{i+1}" for i in range(int(n_rows))], col_labels=cols, alpha=alpha)
 
         elif entry == "TWOWAY_REP":
-            st.caption(t("long_format_caption", lang))
-            df = _numeric_table(item_id, "data", ["FactorA", "FactorB", "Response"], min_rows=6, lang=lang)
-            clean = df.dropna()
-            clean = clean.assign(Response=pd.to_numeric(clean["Response"], errors="coerce")).dropna()
             alpha, _ = _alpha_tail_inputs(item_id, tails=False, lang=lang)
-            call_kwargs = dict(df_data=clean, factor_a_col="FactorA", factor_b_col="FactorB", response_col="Response", alpha=alpha)
+            entry_mode = st.radio(
+                t("entry_mode_label", lang),
+                ["long", "grid"],
+                format_func=lambda v: t(f"entry_mode_{v}", lang),
+                horizontal=True,
+                key=_state_key(item_id, "twrep_mode"),
+            )
+            if entry_mode == "long":
+                st.caption(t("long_format_caption", lang))
+                df = _numeric_table(item_id, "data", ["FactorA", "FactorB", "Response"], min_rows=6, lang=lang)
+                clean = df.dropna()
+                clean = clean.assign(Response=pd.to_numeric(clean["Response"], errors="coerce")).dropna()
+                call_kwargs = dict(df_data=clean, factor_a_col="FactorA", factor_b_col="FactorB", response_col="Response", alpha=alpha)
+            else:
+                n_rows = st.number_input("Number of Factor A levels (rows)", min_value=2, max_value=10, value=2, step=1, key=_state_key(item_id, "twrep_nrows"))
+                n_cols = st.number_input("Number of Factor B levels (columns)", min_value=2, max_value=10, value=2, step=1, key=_state_key(item_id, "twrep_ncols"))
+                n_rep = st.number_input("Replicates per cell", min_value=2, max_value=20, value=2, step=1, key=_state_key(item_id, "twrep_nrep"))
+                st.caption(t("grid_comma_caption", lang).format(n=int(n_rep)))
+                grid_cols = [f"B{i+1}" for i in range(int(n_cols))]
+                grid_df = _numeric_table(item_id, "grid", grid_cols, min_rows=int(n_rows), lang=lang)
+                rows_used = grid_df.head(int(n_rows))
+                long_rows = []
+                for i in range(min(int(n_rows), len(rows_used))):
+                    row_label = f"A{i+1}"
+                    for c in grid_cols:
+                        cell_val = rows_used.iloc[i][c]
+                        if cell_val is None or str(cell_val).strip() == "":
+                            continue
+                        for piece in str(cell_val).split(","):
+                            piece = piece.strip()
+                            if piece == "":
+                                continue
+                            try:
+                                v = float(piece)
+                            except ValueError:
+                                continue
+                            long_rows.append({"FactorA": row_label, "FactorB": c, "Response": v})
+                clean = pd.DataFrame(long_rows, columns=["FactorA", "FactorB", "Response"])
+                call_kwargs = dict(df_data=clean, factor_a_col="FactorA", factor_b_col="FactorB", response_col="Response", alpha=alpha) if not clean.empty else None
 
         elif entry == "MATRIX_VARS":
             n_vars = st.number_input("Number of variables", min_value=2, max_value=8, value=3, step=1, key=_state_key(item_id, "nvars"))
