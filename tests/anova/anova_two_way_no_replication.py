@@ -77,7 +77,15 @@ def run_anova_two_way_no_replication(data_matrix: np.ndarray,
     return {
         "sample_stats": {"a_rows": a, "b_cols": b, "N": N, "grand_mean": grand_mean},
         "anova_table": anova_table,
-        "factor_a_result": {"f": float(f_rows), "p": float(p_rows), "crit": float(crit_rows), "decision": decision_rows, "conclusion": conclusion_a},
-        "factor_b_result": {"f": float(f_cols), "p": float(p_cols), "crit": float(crit_cols), "decision": decision_cols, "conclusion": conclusion_b},
+        "factor_a_result": {
+            "label": tt("factor_a_rows_label", lang),
+            "hypotheses": {"h0_text": tt("factor_a_h0", lang), "h1_text": tt("factor_a_h1", lang)},
+            "f": float(f_rows), "p": float(p_rows), "crit": float(crit_rows), "decision": decision_rows, "conclusion": conclusion_a
+        },
+        "factor_b_result": {
+            "label": tt("factor_b_cols_label", lang),
+            "hypotheses": {"h0_text": tt("factor_b_h0", lang), "h1_text": tt("factor_b_h1", lang)},
+            "f": float(f_cols), "p": float(p_cols), "crit": float(crit_cols), "decision": decision_cols, "conclusion": conclusion_b
+        },
         "steps": steps
     }

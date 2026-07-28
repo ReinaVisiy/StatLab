@@ -5,7 +5,7 @@ Exports: run_multiple_linear_regression
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-from core.helpers import format_p_value
+from core.helpers import format_p_value, build_conclusion
 from core.param_validation import validate_range
 from i18n.translations import t as tt
 
@@ -75,6 +75,9 @@ def run_multiple_linear_regression(df_data: pd.DataFrame,
     corr_mat = pd.DataFrame(X, columns=x_cols).corr().to_numpy()
     eigenvals = np.linalg.eigvalsh(corr_mat).tolist()
 
+    decision = None if degenerate else ("reject" if p_val_f < alpha else "fail")
+    conclusion = None if degenerate else build_conclusion(decision, alpha, tt("regr_h1_overall", lang), lang)
+
     eq_terms = [f"{model.params[0]:.4f}"]
     for i, c in enumerate(x_cols):
         sign = "+" if model.params[i+1] >= 0 else "-"
@@ -98,7 +101,7 @@ def run_multiple_linear_regression(df_data: pd.DataFrame,
             f"5. {tt('regr_eigen_line', lang).format(eigenvals=[round(ev,3) for ev in eigenvals])}"
         ]
 
-    return {
+    result = {
         "model_equation": model_equation,
         "coefficients": coeff_table,
         "anova_table": anova_table,
@@ -114,3 +117,19 @@ def run_multiple_linear_regression(df_data: pd.DataFrame,
         "degenerate": degenerate,
         "steps": steps
     }
+
+    if not degenerate:
+        result.update({
+            "hypotheses": {
+                "h0_symbol": "β₁ = β₂ = ... = β_k = 0",
+                "h0_text": tt("regr_h0_overall", lang),
+                "h1_symbol": "At least one β_i ≠ 0",
+                "h1_text": tt("regr_h1_overall", lang)[0].upper() + tt("regr_h1_overall", lang)[1:]
+            },
+            "statistic": f_stat,
+            "p_value": p_val_f,
+            "decision": decision,
+            "conclusion": conclusion
+        })
+
+    return result

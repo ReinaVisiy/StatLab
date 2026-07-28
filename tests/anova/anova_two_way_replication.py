@@ -115,9 +115,21 @@ def run_anova_two_way_replication(df_data: pd.DataFrame,
     return {
         "sample_stats": {"a": a, "b": b, "n_rep": n_rep, "N": N, "grand_mean": grand_mean},
         "anova_table": anova_table,
-        "interaction_result": {"f": float(f_ab), "p": float(p_ab), "crit": float(crit_ab), "decision": decision_ab},
-        "factor_a_result": {"f": float(f_a), "p": float(p_a), "crit": float(crit_a), "decision": decision_a, "conclusion": conclusion_a},
-        "factor_b_result": {"f": float(f_b), "p": float(p_b), "crit": float(crit_b), "decision": decision_b, "conclusion": conclusion_b},
+        "interaction_result": {
+            "label": f"{tt('interaction_label', lang)} ({factor_a_col} x {factor_b_col})",
+            "hypotheses": {"h0_text": tt("interaction_h0", lang), "h1_text": tt("interaction_h1", lang)},
+            "f": float(f_ab), "p": float(p_ab), "crit": float(crit_ab), "decision": decision_ab, "conclusion": interpretation
+        },
+        "factor_a_result": {
+            "label": f"{tt('factor_label', lang)} A ({factor_a_col})",
+            "hypotheses": {"h0_text": tt("factor_a_h0", lang), "h1_text": tt("factor_a_h1", lang)},
+            "f": float(f_a), "p": float(p_a), "crit": float(crit_a), "decision": decision_a, "conclusion": conclusion_a
+        },
+        "factor_b_result": {
+            "label": f"{tt('factor_label', lang)} B ({factor_b_col})",
+            "hypotheses": {"h0_text": tt("factor_b_h0", lang), "h1_text": tt("factor_b_h1", lang)},
+            "f": float(f_b), "p": float(p_b), "crit": float(crit_b), "decision": decision_b, "conclusion": conclusion_b
+        },
         "interpretation": interpretation,
         "interaction_plot": interaction_plot,
         "steps": steps

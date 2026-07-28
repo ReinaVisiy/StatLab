@@ -4,7 +4,7 @@ Exports: run_polynomial_regression
 """
 import numpy as np
 import statsmodels.api as sm
-from core.helpers import parse_numeric_input, format_p_value
+from core.helpers import parse_numeric_input, format_p_value, build_conclusion
 from core.param_validation import validate_range
 from i18n.translations import t as tt
 
@@ -48,6 +48,9 @@ def run_polynomial_regression(x_data, y_data, degree: int = 2, alpha: float = 0.
             "p_value": None if degenerate else float(model.pvalues[i])
         })
 
+    decision = None if degenerate else ("reject" if p_val_f < alpha else "fail")
+    conclusion = None if degenerate else build_conclusion(decision, alpha, tt("regr_h1_overall", lang), lang)
+
     # Equation string
     terms = [f"{model.params[0]:.4f}"]
     for d in range(1, degree + 1):
@@ -78,7 +81,7 @@ def run_polynomial_regression(x_data, y_data, degree: int = 2, alpha: float = 0.
             f"4. {tt('regr_overall_f_line', lang).format(df_reg=degree, df_err=df_err, fstat=f_stat, pval=format_p_value(p_val_f))}"
         ]
 
-    return {
+    result = {
         "degree": degree,
         "model_equation": model_equation,
         "coefficients": coeff_table,
@@ -97,3 +100,19 @@ def run_polynomial_regression(x_data, y_data, degree: int = 2, alpha: float = 0.
         },
         "steps": steps
     }
+
+    if not degenerate:
+        result.update({
+            "hypotheses": {
+                "h0_symbol": "β₁ = β₂ = ... = β_d = 0",
+                "h0_text": tt("regr_h0_overall", lang),
+                "h1_symbol": "At least one β_i ≠ 0",
+                "h1_text": tt("regr_h1_overall", lang)[0].upper() + tt("regr_h1_overall", lang)[1:]
+            },
+            "statistic": f_stat,
+            "p_value": p_val_f,
+            "decision": decision,
+            "conclusion": conclusion
+        })
+
+    return result

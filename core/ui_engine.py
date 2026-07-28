@@ -765,6 +765,25 @@ def render_results(suite_key, item_id):
         if result.get("conclusion"):
             st.write(result["conclusion"])
 
+    # --- 10b. Per-factor decision boxes (e.g. Two-Way ANOVA: Factor A / B / interaction) ---
+    for sub_key in ("interaction_result", "factor_a_result", "factor_b_result"):
+        sub = result.get(sub_key)
+        if not isinstance(sub, dict) or "decision" not in sub:
+            continue
+        st.markdown(f"#### {sub.get('label', sub_key)}")
+        sub_h = sub.get("hypotheses")
+        if isinstance(sub_h, dict):
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown(f"**{t('null_hypothesis', lang)}**")
+                st.write(sub_h.get("h0_text", ""))
+            with c2:
+                st.markdown(f"**{t('alt_hypothesis', lang)}**")
+                st.write(sub_h.get("h1_text", ""))
+        st.markdown(render_decision_box_html(sub["decision"], sub.get("label", ""), lang), unsafe_allow_html=True)
+        if sub.get("conclusion"):
+            st.write(sub["conclusion"])
+
     # --- Properties (for laws) ---
     _property_label_keys = {"mean", "variance", "std_dev", "mode", "median", "skewness", "kurtosis"}
     if result.get("properties"):
