@@ -19,6 +19,10 @@ from core.helpers import (
 )
 from core.report_pdf import build_pdf_report
 from core.registry import SUITES, get_item, NOTATION_SYMBOLS
+from core.param_solver import (
+    solve_for_parameter, is_solvable_param,
+    SOLVABLE_QUERY_TYPES_DISCRETE, SOLVABLE_QUERY_TYPES_CONTINUOUS,
+)
 from i18n.translations import t
 
 # ---------------------------------------------------------------------------
@@ -343,26 +347,55 @@ def render_detail(suite_key, item_id):
 
     try:
         if entry == "D":
-            params = {}
-            cols = st.columns(2) if item["params_spec"] else [st]
-            for i, spec in enumerate(item["params_spec"]):
-                with (cols[i % 2] if item["params_spec"] else st):
-                    params[spec["name"]] = _param_input(item_id, spec)
-            qt_key = _state_key(item_id, "query_type")
-            query_type = st.selectbox(t("query_type_label", lang), item["query_types"], key=qt_key)
-            k = a = b = None
-            if query_type in ("P(X=k)", "P(X<=k)", "P(X<k)", "P(X>k)", "P(X>=k)"):
-                k = st.number_input(t("k_label", lang), value=1.0, key=_state_key(item_id, "k"))
-            elif query_type in ("P(X<=a)", "P(X<a)", "P(X>a)", "P(X>=a)"):
-                k = st.number_input("a", value=0.0, key=_state_key(item_id, "k_as_a"))
-            elif query_type == "f(x)":
-                k = st.number_input(t("x_label", lang), value=0.0, key=_state_key(item_id, "x"))
-            elif query_type == "P(a<=X<=b)":
-                a = st.number_input(t("a_lower_label", lang), value=0.0, key=_state_key(item_id, "a"))
-                b = st.number_input(t("b_upper_label", lang), value=1.0, key=_state_key(item_id, "b"))
-            elif query_type == "inverse":
-                k = st.slider(t("target_cum_prob", lang), 0.0, 1.0, 0.5, key=_state_key(item_id, "inv_p"))
-            call_kwargs = dict(params=params, query_type=query_type, k=k, a=a, b=b)
+            solvable_params = [spec for spec in item["params_spec"] if is_solvable_param(spec)]
+            is_discrete_law = "P(X=k)" in item["query_types"]
+            solve_query_types = SOLVABLE_QUERY_TYPES_DISCRETE if is_discrete_law else SOLVABLE_QUERY_TYPES_CONTINUOUS
+
+            solve_mode = False
+            if solvable_params:
+                solve_mode = st.checkbox(t("solve_for_param_toggle", lang), key=_state_key(item_id, "solve_mode"))
+
+            if solve_mode:
+                solve_for = st.selectbox(
+                    t("solve_for_param_label", lang),
+                    [s["name"] for s in solvable_params],
+                    format_func=lambda n: next(s["label"] for s in solvable_params if s["name"] == n),
+                    key=_state_key(item_id, "solve_for"),
+                )
+                solve_spec = next(s for s in solvable_params if s["name"] == solve_for)
+                other_specs = [s for s in item["params_spec"] if s["name"] != solve_for]
+                other_params = {}
+                cols2 = st.columns(2) if other_specs else [st]
+                for i, spec in enumerate(other_specs):
+                    with (cols2[i % 2] if other_specs else st):
+                        other_params[spec["name"]] = _param_input(item_id, spec)
+                sqt = st.selectbox(t("solve_query_type_label", lang), solve_query_types, key=_state_key(item_id, "solve_qt"))
+                x_step = 1.0 if is_discrete_law else 0.01
+                x_val = st.number_input(t("solve_known_x_label", lang), value=1.0, step=x_step, key=_state_key(item_id, "solve_x"))
+                target_p = st.slider(t("solve_target_p_label", lang), 0.0, 1.0, 0.5, key=_state_key(item_id, "solve_p"))
+                call_kwargs = dict(mode="solve_param", base_params=other_params, solve_for=solve_for,
+                                    param_spec=solve_spec, query_type=sqt, x_val=x_val, target_p=target_p)
+            else:
+                params = {}
+                cols = st.columns(2) if item["params_spec"] else [st]
+                for i, spec in enumerate(item["params_spec"]):
+                    with (cols[i % 2] if item["params_spec"] else st):
+                        params[spec["name"]] = _param_input(item_id, spec)
+                qt_key = _state_key(item_id, "query_type")
+                query_type = st.selectbox(t("query_type_label", lang), item["query_types"], key=qt_key)
+                k = a = b = None
+                if query_type in ("P(X=k)", "P(X<=k)", "P(X<k)", "P(X>k)", "P(X>=k)"):
+                    k = st.number_input(t("k_label", lang), value=1.0, key=_state_key(item_id, "k"))
+                elif query_type in ("P(X<=a)", "P(X<a)", "P(X>a)", "P(X>=a)"):
+                    k = st.number_input("a", value=0.0, key=_state_key(item_id, "k_as_a"))
+                elif query_type == "f(x)":
+                    k = st.number_input(t("x_label", lang), value=0.0, key=_state_key(item_id, "x"))
+                elif query_type == "P(a<=X<=b)":
+                    a = st.number_input(t("a_lower_label", lang), value=0.0, key=_state_key(item_id, "a"))
+                    b = st.number_input(t("b_upper_label", lang), value=1.0, key=_state_key(item_id, "b"))
+                elif query_type == "inverse":
+                    k = st.slider(t("target_cum_prob", lang), 0.0, 1.0, 0.5, key=_state_key(item_id, "inv_p"))
+                call_kwargs = dict(params=params, query_type=query_type, k=k, a=a, b=b)
 
         elif entry in ("DESC_DISCRETE",):
             freq_mode = st.radio(t("freq_input_type_label", lang),
@@ -730,13 +763,23 @@ def render_detail(suite_key, item_id):
 
     if call_kwargs is not None and st.button(f"✅ {t('calculate_button', lang)}", type="primary", width="stretch"):
         func = _resolve_func(item["module"], item["func"])
-        if "lang" in inspect.signature(func).parameters:
-            call_kwargs["lang"] = lang
-        with st.spinner(t("computing_spinner", lang)):
-            result = safe_compute(func, **call_kwargs)
-        st.session_state[f"result__{item_id}"] = result
-        if entry == "D":
-            st.session_state[f"lawparams__{item_id}"] = call_kwargs.get("params", {})
+        if call_kwargs.get("mode") == "solve_param":
+            solve_kwargs = {k: v for k, v in call_kwargs.items() if k != "mode"}
+            with st.spinner(t("computing_spinner", lang)):
+                result = safe_compute(solve_for_parameter, func, lang=lang, **solve_kwargs)
+            st.session_state[f"result__{item_id}"] = result
+            law_params = dict(solve_kwargs["base_params"])
+            if not result.get("error"):
+                law_params[solve_kwargs["solve_for"]] = result["solved_parameter"]["value_str"]
+            st.session_state[f"lawparams__{item_id}"] = law_params
+        else:
+            if "lang" in inspect.signature(func).parameters:
+                call_kwargs["lang"] = lang
+            with st.spinner(t("computing_spinner", lang)):
+                result = safe_compute(func, **call_kwargs)
+            st.session_state[f"result__{item_id}"] = result
+            if entry == "D":
+                st.session_state[f"lawparams__{item_id}"] = call_kwargs.get("params", {})
         _nav("results", suite=suite_key, item=item_id)
 
 
@@ -772,6 +815,9 @@ def render_results(suite_key, item_id):
             f"<div style='font-size:2.6rem; font-weight:700; margin:0.5rem 0 1rem 0;'>{notation}</div>",
             unsafe_allow_html=True,
         )
+        if result.get("solved_parameter"):
+            sp = result["solved_parameter"]
+            st.success(f"**{sp['label']}** → **{sp['name']} = {sp['value_str']}**")
 
     if result.get("error"):
         st.error(result.get("message", t("generic_error", lang)))
