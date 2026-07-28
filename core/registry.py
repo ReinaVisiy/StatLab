@@ -229,6 +229,8 @@ SUITES = {
              "desc_en": "Test equality of variances across groups (sensitive to non-normality).", "desc_fr": "Teste l'égalité des variances entre groupes (sensible à la non-normalité)."},
             {"id": "levene_test", "name": "Levene's Test", "name_fr": "Test de Levene", "entry": "BN", "module": "tests.anova.levene_test", "func": "run_levene_test",
              "desc_en": "Robust test of equality of variances across groups, less sensitive to non-normality.", "desc_fr": "Test robuste de l'égalité des variances entre groupes, moins sensible à la non-normalité."},
+            {"id": "brown_forsythe_test", "name": "Brown-Forsythe Test", "name_fr": "Test de Brown-Forsythe", "entry": "BN", "module": "tests.anova.brown_forsythe_test", "func": "run_brown_forsythe_test",
+             "desc_en": "Median-centered variant of Levene's test, robust test of equality of variances even under skewed distributions.", "desc_fr": "Variante du test de Levene centrée sur la médiane, robuste à l'égalité des variances même sous des distributions asymétriques."},
         ],
     },
     "correlation": {

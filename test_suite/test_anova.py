@@ -11,6 +11,7 @@ from tests.anova.anova_one_way import run_anova_one_way
 from tests.anova.anova_two_way_no_replication import run_anova_two_way_no_replication
 from tests.anova.bartlett_test import run_bartlett_test
 from tests.anova.levene_test import run_levene_test
+from tests.anova.brown_forsythe_test import run_brown_forsythe_test
 
 
 def test_anova_one_way_matches_scipy_f_oneway():
@@ -88,3 +89,20 @@ def test_levene_matches_scipy_mean_center():
     stat_ref, p_ref = sst.levene(*groups, center="mean")
     assert r["statistic"] == pytest.approx(stat_ref, rel=1e-6)
     assert r["p_value"] == pytest.approx(p_ref, rel=1e-4)
+
+
+def test_brown_forsythe_matches_scipy_median_center():
+    groups = [[1, 2, 3, 4], [5, 6, 7, 8], [2, 4, 6, 9]]
+    r = run_brown_forsythe_test(groups, alpha=0.05)
+    stat_ref, p_ref = sst.levene(*groups, center="median")
+    assert r["statistic"] == pytest.approx(stat_ref, rel=1e-6)
+    assert r["p_value"] == pytest.approx(p_ref, rel=1e-4)
+
+
+def test_brown_forsythe_matches_levene_median_center():
+    # Brown-Forsythe is exactly Levene's test centered on the median.
+    groups = [[10, 12, 9, 15], [22, 25, 19, 30], [5, 6, 4, 8]]
+    r_bf = run_brown_forsythe_test(groups, alpha=0.05)
+    r_lev = run_levene_test(groups, center="median", alpha=0.05)
+    assert r_bf["statistic"] == pytest.approx(r_lev["statistic"], rel=1e-9)
+    assert r_bf["p_value"] == pytest.approx(r_lev["p_value"], rel=1e-9)
