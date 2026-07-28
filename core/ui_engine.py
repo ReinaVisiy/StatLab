@@ -768,7 +768,10 @@ def render_results(suite_key, item_id):
             notation = f"X ~ {symbol}({param_str})"
         else:
             notation = f"X ~ {symbol}"
-        st.markdown(f"**{notation}**")
+        st.markdown(
+            f"<div style='font-size:2.6rem; font-weight:700; margin:0.5rem 0 1rem 0;'>{notation}</div>",
+            unsafe_allow_html=True,
+        )
 
     if result.get("error"):
         st.error(result.get("message", t("generic_error", lang)))
