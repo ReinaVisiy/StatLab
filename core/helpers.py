@@ -172,6 +172,69 @@ def _render_png_download(fig, lang: str = "en", download_key: str = None):
                             mime="image/png", key=f"png_{download_key}")
     return png_bytes
 
+def create_regression_plot(plot_data: Dict[str, Any], lang: str = "en", download_key: str = None):
+    """Scatter plot of the raw (x, y) data with the fitted regression
+    line (simple linear) or curve (polynomial) overlaid — replaces the
+    old misrouted generic hypothesis-test plot, which had no notion of
+    regression's x/y/fit shape."""
+    if not plot_data:
+        return
+    fig = go.Figure()
+    if "x_curve" in plot_data:  # polynomial regression shape
+        fig.add_trace(go.Scatter(x=plot_data["x_raw"], y=plot_data["y_raw"], mode="markers",
+                                  name=t("scatter_plot_title", lang), marker=dict(color=ACCENT, size=8)))
+        fig.add_trace(go.Scatter(x=plot_data["x_curve"], y=plot_data["y_curve"], mode="lines",
+                                  name=t("trend_line_label", lang), line=dict(color=REJECT)))
+    elif "x" in plot_data and "y_hat" in plot_data:  # simple linear regression shape
+        x, y, y_hat = np.array(plot_data["x"]), np.array(plot_data["y"]), np.array(plot_data["y_hat"])
+        order = np.argsort(x)
+        fig.add_trace(go.Scatter(x=x, y=y, mode="markers", name=t("scatter_plot_title", lang),
+                                  marker=dict(color=ACCENT, size=8)))
+        fig.add_trace(go.Scatter(x=x[order], y=y_hat[order], mode="lines", name=t("trend_line_label", lang),
+                                  line=dict(color=REJECT)))
+    else:
+        return
+    fig.update_layout(get_shared_plotly_theme())
+    fig.update_layout(title=t("regression_fit_plot_title", lang), xaxis_title="X", yaxis_title="Y")
+    st.plotly_chart(fig, width="stretch")
+    return _render_png_download(fig, lang, download_key)
+
+
+def create_residuals_plot(fitted, residuals, lang: str = "en", download_key: str = None):
+    """Residuals-vs-fitted diagnostic scatter, usable by any regression
+    variant (simple, multiple, polynomial) since all three already
+    return fitted values and residuals."""
+    if fitted is None or residuals is None:
+        return
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=fitted, y=residuals, mode="markers", marker=dict(color=ACCENT, size=8)))
+    fig.add_hline(y=0, line_dash="dash", line_color="#94A3B8")
+    fig.update_layout(get_shared_plotly_theme())
+    fig.update_layout(title=t("residuals_plot_title", lang), xaxis_title=t("fitted_values_label", lang),
+                       yaxis_title=t("residuals_label", lang))
+    st.plotly_chart(fig, width="stretch")
+    return _render_png_download(fig, lang, download_key)
+
+
+def create_fitted_vs_actual_plot(fitted, actual, lang: str = "en", download_key: str = None):
+    """Fitted-vs-actual scatter with a 45-degree reference line — the
+    standard diagnostic for multiple regression, where a direct x/y
+    scatter isn't possible with 2+ predictors."""
+    if fitted is None or actual is None:
+        return
+    fitted, actual = np.array(fitted), np.array(actual)
+    lo, hi = float(min(fitted.min(), actual.min())), float(max(fitted.max(), actual.max()))
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=actual, y=fitted, mode="markers", name=t("fitted_vs_actual_title", lang),
+                              marker=dict(color=ACCENT, size=8)))
+    fig.add_trace(go.Scatter(x=[lo, hi], y=[lo, hi], mode="lines", name=t("equality_line_label", lang),
+                              line=dict(dash="dash", color="#94A3B8")))
+    fig.update_layout(get_shared_plotly_theme())
+    fig.update_layout(title=t("fitted_vs_actual_title", lang), xaxis_title="Y", yaxis_title=t("fitted_values_label", lang))
+    st.plotly_chart(fig, width="stretch")
+    return _render_png_download(fig, lang, download_key)
+
+
 def create_lorenz_chart(lorenz_data: Dict[str, Any], gini: float = None, lang: str = "en", download_key: str = None):
     """Plots the Lorenz curve against the line of perfect equality, with the
     area between them shaded, and the Gini index in the title if provided."""

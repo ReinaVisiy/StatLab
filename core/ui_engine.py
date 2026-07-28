@@ -14,6 +14,7 @@ from core.helpers import (
     render_decision_box_html, render_step_cards, create_distribution_plot,
     create_hypothesis_test_plot, format_p_value, safe_compute, download_df_button,
     create_lorenz_chart, create_boxplot_chart, create_scatter_chart,
+    create_regression_plot, create_residuals_plot, create_fitted_vs_actual_plot,
 )
 from core.report_pdf import build_pdf_report
 from core.registry import SUITES, get_item, NOTATION_SYMBOLS
@@ -28,6 +29,29 @@ def _nav(page, suite=None, item=None):
     st.session_state.current_suite = suite
     st.session_state.current_item = item
     st.rerun()
+
+
+def _render_dict_readable(d: dict, key_prefix: str = "", lang: str = "en"):
+    """Renders a dict without falling back to a raw JSON tree. A dict whose
+    values are themselves dicts (e.g. a correlation matrix) becomes a table;
+    a flat dict becomes readable '**Label:** value' lines."""
+    if not d:
+        return
+    is_matrix = all(isinstance(v, dict) for v in d.values())
+    if is_matrix:
+        st.dataframe(pd.DataFrame(d), width="stretch")
+        return
+    for k, v in d.items():
+        label = k.replace("_", " ").title()
+        if isinstance(v, dict):
+            st.markdown(f"**{label}:**")
+            _render_dict_readable(v, lang=lang)
+        elif isinstance(v, float):
+            st.write(f"**{label}:** {v:.6f}")
+        elif isinstance(v, (list, tuple)):
+            st.write(f"**{label}:** {', '.join(str(x) for x in v)}")
+        else:
+            st.write(f"**{label}:** {v}")
 
 
 def _lang():
@@ -645,7 +669,7 @@ def render_results(suite_key, item_id):
 
     if item["entry"] == "D":
         law_params = st.session_state.get(f"lawparams__{item_id}", {})
-        symbol = NOTATION_SYMBOLS.get(item_id, item["name"])
+        symbol = NOTATION_SYMBOLS.get(item_id, _item_name(item, lang))
         if item_id == "standard_normal":
             notation = "X ~ N(0, 1)"
         elif law_params:
@@ -709,8 +733,8 @@ def render_results(suite_key, item_id):
 
     # --- Assumptions ---
     if result.get("assumptions"):
-        with st.expander("Assumption Checks"):
-            st.json(result["assumptions"])
+        with st.expander(t("assumption_checks_title", lang)):
+            _render_dict_readable(result["assumptions"], lang=lang)
 
     # --- 5-9. Standard Error / Statistic / P-Value / Critical Value / Comparison boxes ---
     se_val = result.get("sample_stats", {}).get("se") if isinstance(result.get("sample_stats"), dict) else None
@@ -737,7 +761,7 @@ def render_results(suite_key, item_id):
 
     # --- 10. Decision box ---
     if "decision" in result:
-        st.markdown(render_decision_box_html(result["decision"], item["name"], lang), unsafe_allow_html=True)
+        st.markdown(render_decision_box_html(result["decision"], _item_name(item, lang), lang), unsafe_allow_html=True)
         if result.get("conclusion"):
             st.write(result["conclusion"])
 
@@ -774,7 +798,21 @@ def render_results(suite_key, item_id):
 
     # --- Plot ---
     plot_png_bytes = None
-    if result.get("plot_data"):
+    entry_type = item["entry"]
+    if entry_type in ("SLR", "POLY_REG"):
+        plot_png_bytes = create_regression_plot(result.get("plot_data"), lang=lang, download_key=f"{item_id}_fit")
+        if entry_type == "SLR" and result.get("plot_data"):
+            create_residuals_plot(result["plot_data"].get("y_hat"), result["plot_data"].get("residuals"),
+                                   lang=lang, download_key=f"{item_id}_resid")
+        elif entry_type == "POLY_REG":
+            create_residuals_plot(result.get("fitted_values"), result.get("residuals"),
+                                   lang=lang, download_key=f"{item_id}_resid")
+    elif entry_type == "MULTI_REG":
+        create_fitted_vs_actual_plot(result.get("fitted_values"), result.get("actual_values"),
+                                      lang=lang, download_key=f"{item_id}_fitted")
+        create_residuals_plot(result.get("fitted_values"), result.get("residuals"),
+                               lang=lang, download_key=f"{item_id}_resid")
+    elif result.get("plot_data"):
         if "hypotheses" in result or "statistic" in result:
             plot_png_bytes = create_hypothesis_test_plot(result["plot_data"], lang=lang, download_key=f"{item_id}_plot")
         else:
@@ -833,7 +871,7 @@ def render_results(suite_key, item_id):
                     download_df_button(extra_df, key=f"csv_extra_{item_id}_{k}", lang=lang,
                                         filename=f"{item_id}_{k}.csv")
                 elif isinstance(v, dict):
-                    st.json(v)
+                    _render_dict_readable(v, key_prefix=k, lang=lang)
                 elif isinstance(v, (pd.DataFrame,)):
                     st.dataframe(v, width="stretch")
                     download_df_button(v, key=f"csv_extra_{item_id}_{k}", lang=lang,

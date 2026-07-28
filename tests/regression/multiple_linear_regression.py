@@ -110,6 +110,7 @@ def run_multiple_linear_regression(df_data: pd.DataFrame,
         "eigenvalues": eigenvals,
         "residuals": model.resid.tolist(),
         "fitted_values": model.fittedvalues.tolist(),
+        "actual_values": Y.tolist(),
         "degenerate": degenerate,
         "steps": steps
     }
