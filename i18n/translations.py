@@ -165,6 +165,8 @@ TRANSLATIONS = {
         "regr_overall_f_line": "Overall Model F({df_reg}, {df_err}) = {fstat:.4f} (p = {pval})",
         "regr_eigen_line": "Condition Number / Eigenvalues of Predictor Corr Matrix: {eigenvals}",
         "regr_fit_poly_line": "Fit Polynomial Regression of degree = {degree} (N = {N})",
+        "regr_degenerate_line": "N = {N} equals the number of parameters, so residual df = 0: the fit is exact (perfect interpolation). Standard errors, t-stats, p-values and the overall F-test are undefined and omitted below.",
+        "regr_r2_only_line": "R² = {r2:.4f} (Adjusted R² undefined: 0 residual df)",
 
         # --- Remaining ui_engine.py widget strings ---
         "open_prefix": "Open",
@@ -433,6 +435,8 @@ TRANSLATIONS = {
         "regr_overall_f_line": "F global du modèle F({df_reg}, {df_err}) = {fstat:.4f} (p = {pval})",
         "regr_eigen_line": "Nombre de conditionnement / Valeurs propres de la matrice de corrélation des prédicteurs : {eigenvals}",
         "regr_fit_poly_line": "Ajustement d'une régression polynomiale de degré = {degree} (N = {N})",
+        "regr_degenerate_line": "N = {N} est égal au nombre de paramètres, donc ddl résiduel = 0 : l'ajustement est exact (interpolation parfaite). Les erreurs-types, statistiques t, p-values et le test F global sont indéfinis et omis ci-dessous.",
+        "regr_r2_only_line": "R² = {r2:.4f} (R² ajusté indéfini : ddl résiduel = 0)",
 
         # --- Remaining ui_engine.py widget strings ---
         "open_prefix": "Ouvrir",

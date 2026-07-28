@@ -19,8 +19,8 @@ def run_polynomial_regression(x_data, y_data, degree: int = 2, alpha: float = 0.
     if len(x) != len(y):
         raise ValueError("Lengths of x_data and y_data must match.")
     N = len(x)
-    if N <= degree + 1:
-        raise ValueError(f"Sample size N={N} must be greater than degree={degree} + 1.")
+    if N < degree + 1:
+        raise ValueError(f"Sample size N={N} must be at least degree={degree} + 1.")
 
     # Construct polynomial design matrix
     X_poly = np.column_stack([x**d for d in range(1, degree + 1)])
@@ -28,10 +28,13 @@ def run_polynomial_regression(x_data, y_data, degree: int = 2, alpha: float = 0.
 
     model = sm.OLS(y, X_with_const).fit()
 
+    df_err = N - degree - 1
+    degenerate = df_err <= 0
+
     r2 = float(model.rsquared)
-    adj_r2 = float(model.rsquared_adj)
-    f_stat = float(model.fvalue)
-    p_val_f = float(model.f_pvalue)
+    adj_r2 = None if degenerate else float(model.rsquared_adj)
+    f_stat = None if degenerate else float(model.fvalue)
+    p_val_f = None if degenerate else float(model.f_pvalue)
 
     # Coefficients
     coeff_names = [tt("regr_intercept", lang)] + [f"x^{d}" if d > 1 else "x" for d in range(1, degree + 1)]
@@ -40,9 +43,9 @@ def run_polynomial_regression(x_data, y_data, degree: int = 2, alpha: float = 0.
         coeff_table.append({
             "Term": coeff_names[i],
             "Estimate": float(model.params[i]),
-            "SE": float(model.bse[i]),
-            "t_stat": float(model.tvalues[i]),
-            "p_value": float(model.pvalues[i])
+            "SE": None if degenerate else float(model.bse[i]),
+            "t_stat": None if degenerate else float(model.tvalues[i]),
+            "p_value": None if degenerate else float(model.pvalues[i])
         })
 
     # Equation string
@@ -60,12 +63,20 @@ def run_polynomial_regression(x_data, y_data, degree: int = 2, alpha: float = 0.
     X_grid_const = sm.add_constant(X_grid_poly)
     y_grid_pred = model.predict(X_grid_const)
 
-    steps = [
-        f"1. {tt('regr_fit_poly_line', lang).format(degree=degree, N=N)}",
-        f"2. {tt('regr_model_eq_line', lang).format(eq=model_equation)}",
-        f"3. {tt('regr_r2_adj_line', lang).format(r2=r2, adj_r2=adj_r2)}",
-        f"4. {tt('regr_overall_f_line', lang).format(df_reg=degree, df_err=N - degree - 1, fstat=f_stat, pval=format_p_value(p_val_f))}"
-    ]
+    if degenerate:
+        steps = [
+            f"1. {tt('regr_fit_poly_line', lang).format(degree=degree, N=N)}",
+            f"2. {tt('regr_model_eq_line', lang).format(eq=model_equation)}",
+            f"3. {tt('regr_degenerate_line', lang).format(N=N)}",
+            f"4. {tt('regr_r2_only_line', lang).format(r2=r2)}"
+        ]
+    else:
+        steps = [
+            f"1. {tt('regr_fit_poly_line', lang).format(degree=degree, N=N)}",
+            f"2. {tt('regr_model_eq_line', lang).format(eq=model_equation)}",
+            f"3. {tt('regr_r2_adj_line', lang).format(r2=r2, adj_r2=adj_r2)}",
+            f"4. {tt('regr_overall_f_line', lang).format(df_reg=degree, df_err=df_err, fstat=f_stat, pval=format_p_value(p_val_f))}"
+        ]
 
     return {
         "degree": degree,
@@ -77,6 +88,7 @@ def run_polynomial_regression(x_data, y_data, degree: int = 2, alpha: float = 0.
         "f_p_value": p_val_f,
         "residuals": model.resid.tolist(),
         "fitted_values": model.fittedvalues.tolist(),
+        "degenerate": degenerate,
         "plot_data": {
             "x_raw": x.tolist(),
             "y_raw": y.tolist(),
